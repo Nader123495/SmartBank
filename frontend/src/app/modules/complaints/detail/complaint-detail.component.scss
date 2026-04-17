@@ -1,0 +1,132 @@
+/* Styles de la page détail de réclamation. */
+.modal-lg { max-width: 560px; }
+
+/* État vide / erreur de chargement */
+.detail-page.empty-state {
+  padding: 2rem;
+}
+.empty-state-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 480px;
+  margin-top: 1rem;
+}
+.empty-state-box h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.75rem 0;
+  color: #334155;
+}
+.empty-state-box p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+.empty-state-box .error-detail {
+  color: #dc2626;
+  font-family: monospace;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  word-break: break-word;
+}
+
+/* ═══ Modal « Changer statut » — classes dédiées pour éviter tout conflit ═══ */
+.status-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  min-width: 100%;
+  min-height: 100%;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.status-modal-box {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem 2rem;
+  width: 100%;
+  max-width: 460px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+  position: relative;
+  z-index: 100000;
+  box-sizing: border-box;
+}
+
+.status-modal-box h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem 0;
+  color: #1e293b;
+}
+
+.status-modal-box .modal-desc {
+  font-size: 0.9rem;
+  color: #64748b;
+  margin: 0 0 1rem 0;
+}
+
+.status-modal-box .modal-fg {
+  margin-bottom: 1rem;
+}
+
+.status-modal-box .modal-fg label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 0.35rem;
+}
+
+.status-modal-box .modal-fg .inp,
+.status-modal-box .inp {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  box-sizing: border-box;
+}
+
+.status-modal-box .modal-fg textarea.inp {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.status-modal-box .req {
+  color: #dc2626;
+}
+
+.status-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.btn-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.btn-status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  line-height: 1;
+}
+

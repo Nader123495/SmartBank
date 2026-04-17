@@ -1,0 +1,37 @@
+# Dependencies
+**/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/*.log
+frontend/npm-debug.log*
+/node_modules/
+/out-tsc/
+/tmp/
+/coverage/
+*.tsbuildinfo
+yarn-debug.log*
+yarn-error.log*
+
+# Backend (.NET)
+backend/**/bin/
+backend/**/obj/
+backend/**/*.user
+backend/**/launchSettings.json
+*.log
+
+# IDE / OS / Tools
+.idea/
+.vscode/
+*.suo
+*.user
+Thumbs.db
+.DS_Store
+.gemini/
+brain/
+.cursor/
+
+# Environment (clés secrètes)
+**/appsettings.Development.json
+*.env
+.env.local
+/.env

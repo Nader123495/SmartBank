@@ -1,0 +1,319 @@
+/* Styles du tableau de bord.
+   Fichier créé pour corriger l'erreur Angular de compilation. */
+
+.dashboard-error,
+.dashboard-empty {
+  padding: 2rem;
+  text-align: center;
+  background: var(--gray-50, #f8fafc);
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+.dashboard-error p,
+.dashboard-empty p {
+  margin: 0 0 1rem 0;
+  color: var(--gray-600, #475569);
+}
+.dashboard-error {
+  border: 1px solid var(--red-200, #fecaca);
+  color: var(--red-700, #b91c1c);
+}
+
+/* Pie chart analyse (dynamique) — style donut amélioré */
+.pie-chart-card {
+  margin-bottom: 0.85rem;
+}
+.pie-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+.pie-chart-header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.pie-chart-tabs {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.pie-tab {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid var(--gray-200, #e2e8f0);
+  background: var(--gray-50, #f8fafc);
+  color: var(--gray-600, #475569);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.15s;
+}
+.pie-tab:hover {
+  background: var(--gray-100, #f1f5f9);
+  border-color: var(--gray-300, #cbd5e1);
+  color: var(--gray-800, #1e293b);
+  transform: translateY(-1px);
+}
+.pie-tab.active {
+  background: var(--blue-600, #1a56db);
+  border-color: var(--blue-600, #1a56db);
+  color: white;
+  box-shadow: 0 2px 8px rgba(26, 86, 219, 0.35);
+}
+.pie-chart-wrap {
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
+  flex-wrap: wrap;
+}
+/* Donut : cercle avec gradient + trou central */
+.pie-donut-outer {
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  padding: 0;
+  position: relative;
+  animation: pie-appear 0.4s ease-out;
+}
+@keyframes pie-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.pie-donut-hole {
+  width: 55%;
+  height: 55%;
+  border-radius: 50%;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+.pie-donut-total {
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--gray-800, #1e293b);
+  letter-spacing: -0.5px;
+}
+.pie-donut-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gray-500, #64748b);
+  margin-top: 0.2rem;
+}
+.pie-chart-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 220px;
+  flex: 1;
+  max-width: 280px;
+}
+.pie-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-sm, 6px);
+  transition: background 0.15s;
+  cursor: default;
+}
+.pie-legend-item:hover {
+  background: var(--gray-50, #f8fafc);
+}
+.pie-legend-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+.pie-legend-label {
+  flex: 1;
+  color: var(--gray-700, #374151);
+  font-weight: 500;
+  min-width: 0;
+}
+.pie-legend-value {
+  font-weight: 700;
+  color: var(--gray-800, #1e293b);
+  font-size: 0.83rem;
+  white-space: nowrap;
+}
+.pie-legend-pct {
+  font-weight: 600;
+  color: var(--gray-500, #64748b);
+  font-size: 0.78rem;
+}
+.pie-no-data {
+  color: var(--gray-500);
+  font-size: 0.85rem;
+  margin: 0;
+  padding: 0.5rem 0;
+}
+
+/* Carte Tunisie — couverture géographique */
+.tunisia-map-card {
+  margin-bottom: 0.85rem;
+}
+.map-subtitle {
+  font-size: 0.82rem;
+  color: var(--gray-500, #64748b);
+  margin: -0.4rem 0 1rem 0;
+}
+.tunisia-map-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+.tunisia-map-svg {
+  flex-shrink: 0;
+  width: 280px;
+  max-width: 100%;
+}
+.tunisia-map-svg svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.tunisia-outline {
+  transition: fill 0.2s;
+}
+.tn-region {
+  transition: fill 0.2s;
+}
+.tn-region-centre {
+  fill: var(--gray-200, #e2e8f0);
+}
+.tunisia-outline {
+  pointer-events: none;
+}
+.tn-callout-bg {
+  stroke: rgba(255,255,255,0.9);
+  stroke-width: 1.5;
+}
+.tn-callout-text {
+  font-size: 12px;
+  font-weight: 700;
+  fill: white;
+  font-family: 'IBM Plex Sans', sans-serif;
+  text-anchor: middle;
+}
+.tn-choropleth-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  background: var(--gray-800, #1e293b);
+  border-radius: var(--radius-sm, 6px);
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.95);
+}
+.tn-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.tn-legend-sq {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.tn-legend-sq.tn-high { background: #dc2626; }
+.tn-legend-sq.tn-moderate { background: #ea580c; }
+.tn-legend-sq.tn-low { background: #16a34a; }
+.tunisia-agencies {
+  flex: 1;
+  min-width: 220px;
+  max-width: 360px;
+}
+.tunisia-agencies h4 {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--gray-600, #475569);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 0.75rem 0;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--gray-200, #e2e8f0);
+}
+.agency-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.agency-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 0.5rem;
+  border-radius: var(--radius-sm, 6px);
+  font-size: 0.85rem;
+  transition: background 0.15s;
+}
+.agency-list li:hover {
+  background: var(--gray-50, #f8fafc);
+}
+.agency-name {
+  color: var(--gray-700, #374151);
+  font-weight: 500;
+  min-width: 0;
+  margin-right: 0.5rem;
+}
+.agency-count {
+  font-weight: 700;
+  color: var(--blue-600, #1a56db);
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+.map-no-data {
+  font-size: 0.85rem;
+  color: var(--gray-600, #475569);
+  margin: 0 0 0.5rem 0;
+  font-weight: 500;
+}
+.map-empty-state {
+  padding: 0.25rem 0;
+}
+.map-empty-hint {
+  font-size: 0.78rem;
+  color: var(--gray-500, #64748b);
+  margin: 0 0 0.75rem 0;
+  line-height: 1.45;
+}
+.map-regions-info {
+  font-size: 0.78rem;
+  color: var(--gray-500, #64748b);
+  padding: 0.5rem 0.65rem;
+  background: var(--gray-50, #f8fafc);
+  border-radius: var(--radius-sm, 6px);
+  border-left: 3px solid var(--blue-200, #bfdbfe);
+}
+.map-regions-title {
+  font-weight: 700;
+  color: var(--gray-600, #475569);
+  margin-right: 0.35rem;
+}
+

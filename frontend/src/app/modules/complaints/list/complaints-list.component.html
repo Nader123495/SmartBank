@@ -1,0 +1,132 @@
+<!-- Aligné Figma: ph, card, tbl-wrap, tbl-toolbar, search-box, filter-sel, ref-tag, badge-*, tbl-link, pagination, pg-btn -->
+<div class="ph">
+  <div>
+    <h1>Réclamations</h1>
+    <p>{{ result()?.totalCount ?? 0 }} réclamations au total</p>
+    @if (result()?.items?.length) {
+      <p class="ph-hint">Pour modifier le statut (ex. « En cours », « Clôturée »), cliquez sur <strong>Changer le statut</strong> dans la dernière colonne.</p>
+    }
+  </div>
+  <div class="ph-actions">
+    <a routerLink="/complaints/new" class="btn btn-primary btn-sm">+ Nouvelle</a>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom: 1rem; padding: 0.85rem 1.1rem">
+  <div style="display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center">
+    <div class="search-box" style="flex: 1; min-width: 200px">
+      <span style="color: var(--gray-400)">🔍</span>
+      <input
+        [(ngModel)]="filter.search"
+        (keyup.enter)="search()"
+        placeholder="Référence, titre, client..."
+      />
+    </div>
+    <select class="filter-sel" [(ngModel)]="filter.status" (change)="search()">
+      <option value="">Tous statuts</option>
+      @for (s of statuses; track s) {
+        <option [value]="s">{{ s }}</option>
+      }
+    </select>
+    <select class="filter-sel" [(ngModel)]="filter.priority" (change)="search()">
+      <option value="">Toutes priorités</option>
+      @for (p of priorities; track p) {
+        <option [value]="p">{{ p }}</option>
+      }
+    </select>
+    <select class="filter-sel" [(ngModel)]="filter.channel" (change)="search()">
+      <option value="">Tous canaux</option>
+      @for (c of channels; track c) {
+        <option [value]="c">{{ c }}</option>
+      }
+    </select>
+    <button type="button" class="btn btn-ghost btn-sm" (click)="clearFilters()">✕ Effacer</button>
+  </div>
+</div>
+
+<div class="tbl-wrap">
+  @if (loading()) {
+    <div class="empty-state">
+      <span class="empty-ico">⏳</span>
+      <h3>Chargement...</h3>
+      <p>Récupération des réclamations</p>
+    </div>
+  } @else if (loadError()) {
+    <div class="empty-state">
+      <span class="empty-ico">⚠️</span>
+      <h3>Erreur de chargement</h3>
+      <p class="error-detail">{{ loadError() }}</p>
+      <button type="button" class="btn btn-primary" style="margin-top:1rem" (click)="load()">Réessayer</button>
+    </div>
+  } @else if (!result() || !result()!.items?.length) {
+    <div class="empty-state">
+      <span class="empty-ico">📭</span>
+      <h3>Aucune réclamation trouvée</h3>
+      <p>Modifiez vos filtres ou créez une nouvelle réclamation.</p>
+      <a routerLink="/complaints/new" class="btn btn-primary" style="margin-top:1rem">+ Nouvelle réclamation</a>
+    </div>
+  } @else {
+    <div class="tbl-toolbar">
+      <span class="tbl-info">{{ result()!.totalCount }} réclamations — Page {{ result()!.page }} / {{ result()!.totalPages }}</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th (click)="sortBy('Reference')" style="cursor: pointer">Référence</th>
+          <th>Titre</th>
+          <th>Type</th>
+          <th>Canal</th>
+          <th (click)="sortBy('Priority')" style="cursor: pointer">Priorité</th>
+          <th (click)="sortBy('Status')" style="cursor: pointer">Statut</th>
+          <th>Client</th>
+          <th>Assigné à</th>
+          <th (click)="sortBy('SLADeadline')" style="cursor: pointer">SLA</th>
+          <th (click)="sortBy('CreatedAt')" style="cursor: pointer">Créé le</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (c of result()!.items; track c.id) {
+          <tr [class.row-esc]="c.isEscalated" [class.row-breach]="c.isSLABreached">
+            <td>
+              <span class="ref-tag">{{ c.reference }}</span>
+              @if (c.isEscalated) {
+                <span class="badge badge-escalade" style="margin-left: 0.35rem">ESC</span>
+              }
+            </td>
+            <td class="title-td">{{ c.title }}</td>
+            <td>{{ c.complaintType }}</td>
+            <td>{{ c.channel }}</td>
+            <td><span class="badge" [ngClass]="priorityClass(c.priority)">{{ c.priority }}</span></td>
+            <td><span class="badge" [ngClass]="statusClass(c.status)">{{ c.status }}</span></td>
+            <td>{{ c.clientName ?? '—' }}</td>
+            <td>@if (c.assignedTo) { {{ c.assignedTo }} } @else { <em>Non assigné</em> }</td>
+            <td>
+              @if (c.slaDeadline) {
+                <span class="sla-td" [class.ok]="!c.isSLABreached" [class.breach]="c.isSLABreached">
+                  {{ c.slaDeadline | date:'dd/MM HH:mm' }}
+                </span>
+              } @else { — }
+            </td>
+            <td>{{ c.createdAt | date:'dd/MM/yyyy' }}</td>
+            <td class="actions-td">
+              <a [routerLink]="['/complaints', c.id]" class="tbl-link">Voir</a>
+              @if (canChangeStatus(c.status)) {
+                <a [routerLink]="['/complaints', c.id]" [queryParams]="{ action: 'status' }" class="btn btn-primary btn-sm btn-status">Changer le statut</a>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+    @if (result()!.totalPages > 1) {
+      <div class="pagination">
+        <button type="button" class="pg-btn" [disabled]="!result()!.hasPreviousPage" (click)="goPage(filter.page - 1)">‹</button>
+        @for (p of pages; track p) {
+          <button type="button" class="pg-btn" [class.active]="p === filter.page" (click)="goPage(p)">{{ p }}</button>
+        }
+        <button type="button" class="pg-btn" [disabled]="!result()!.hasNextPage" (click)="goPage(filter.page + 1)">›</button>
+      </div>
+    }
+  }
+</div>

@@ -1,0 +1,98 @@
+<div class="audit-page">
+  <header class="audit-header">
+    <div class="audit-header-text">
+      <h1>Journal d'Audit</h1>
+      <p class="audit-subtitle">Traçabilité complète de toutes les actions — {{ totalCount | number:'1.0-0':'fr' }} entrées</p>
+    </div>
+    <button type="button" class="btn-export" (click)="exportCsv()">
+      <svg class="btn-export-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Exporter
+    </button>
+  </header>
+
+  <div class="audit-toolbar">
+    <div class="audit-search-wrap">
+      <span class="audit-search-icon" aria-hidden="true">🔍</span>
+      <input
+        type="text"
+        class="audit-search-input"
+        placeholder="Action, utilisateur, entité..."
+        [(ngModel)]="filter.search"
+        (keyup.enter)="load(1)"
+      />
+    </div>
+    <select class="audit-filter-select" [(ngModel)]="filter.action" (change)="load(1)">
+      <option value="">Toutes actions</option>
+      @for (a of auditActions; track a.value) {
+        @if (a.value) {
+          <option [value]="a.value">{{ a.label }}</option>
+        }
+      }
+    </select>
+    <input type="date" class="audit-date-input" [(ngModel)]="filter.from" (change)="load(1)" title="Date début" />
+    <input type="date" class="audit-date-input" [(ngModel)]="filter.to" (change)="load(1)" title="Date fin" />
+    <button type="button" class="btn-clear" (click)="clearFilters()">
+      <span aria-hidden="true">✕</span> Effacer
+    </button>
+  </div>
+
+  @if (error) {
+    <div class="alert-banner error">{{ error }}</div>
+  }
+
+  <div class="audit-table-wrap">
+    <p class="audit-table-info">{{ totalCount | number:'1.0-0':'fr' }} entrées — Page {{ page }}/{{ totalPages || 1 }}</p>
+    <table class="audit-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>DATE &amp; HEURE</th>
+          <th>UTILISATEUR</th>
+          <th>ACTION</th>
+          <th>ENTITÉ</th>
+          <th>DÉTAIL</th>
+          <th>IP</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (log of items; track log.id; let i = $index) {
+          <tr>
+            <td class="col-num">{{ (page - 1) * filter.pageSize + i + 1 }}</td>
+            <td class="col-date">{{ log.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
+            <td class="col-user">
+              <div class="audit-user-cell">
+                <span class="audit-avatar">{{ getInitials(log) }}</span>
+                <span class="audit-user-name">{{ isSystem(log) ? 'Système' : (log.userName || '—') }}</span>
+              </div>
+            </td>
+            <td class="col-action">
+              <span class="audit-badge" [class]="'audit-badge--' + getActionBadgeClass(log.action)">{{ log.action }}</span>
+            </td>
+            <td class="col-entity">{{ log.entity ?? '—' }}</td>
+            <td class="col-detail">{{ log.detail ?? '—' }}</td>
+            <td class="col-ip">{{ log.ipAddress ?? '—' }}</td>
+          </tr>
+        }
+        @if (!items.length && !loading) {
+          <tr>
+            <td colspan="7" class="audit-empty">Aucun log d'audit trouvé.</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    @if (totalPages > 1) {
+      <div class="audit-pagination">
+        <button type="button" class="audit-page-btn" [disabled]="page <= 1" (click)="load(page - 1)" aria-label="Page précédente">‹</button>
+        @for (p of paginationPages; track $index) {
+          @if (p === -1) {
+            <span class="audit-page-ellipsis">…</span>
+          } @else {
+            <button type="button" class="audit-page-btn" [class.audit-page-btn--current]="p === page" (click)="load(p)">{{ p }}</button>
+          }
+        }
+        <button type="button" class="audit-page-btn" [disabled]="page >= totalPages" (click)="load(page + 1)" aria-label="Page suivante">›</button>
+      </div>
+    }
+  </div>
+</div>

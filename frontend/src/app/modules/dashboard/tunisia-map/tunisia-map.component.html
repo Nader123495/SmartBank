@@ -1,0 +1,29 @@
+<div class="tunisia-map-card">
+  @if (loading()) {
+    <div class="tunisia-map-loading">
+      <span class="tunisia-map-spinner"></span>
+      <span>Chargement de la carte…</span>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="tunisia-map-error">
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  <div
+    #mapContainer
+    class="tunisia-map-container"
+    [class.tunisia-map-container--hidden]="loading() || error()">
+  </div>
+
+  <div class="tunisia-map-legend" [class.tunisia-map-legend--hidden]="loading() || error()">
+    @for (item of legendItems; track item.label) {
+      <div class="tunisia-map-legend-item">
+        <span class="tunisia-map-legend-swatch" [style.background]="item.color"></span>
+        <span class="tunisia-map-legend-label">{{ item.label }}</span>
+      </div>
+    }
+  </div>
+</div>

@@ -1,0 +1,462 @@
+{
+  "name": "SmartBank - Workflow 3: Changement de Statut & Notifications",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "complaint/status-update",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "c3d4e5f6-0003-0003-0003-000000000001",
+      "name": "Webhook - Changement Statut",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        400
+      ],
+      "webhookId": "smartbank-status-update"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Valider la transition de statut selon le workflow défini\nconst body = $input.first().json.body || $input.first().json;\n\nconst { complaintId, nouveauStatut, ancienStatut, userId, commentaire, justification } = body;\n\n// Matrice des transitions autorisées\nconst transitionsAutorisees = {\n  'Nouvelle':   ['Assignée', 'Rejetée'],\n  'Assignée':   ['En cours', 'Rejetée'],\n  'En cours':   ['Validation', 'Assignée', 'Rejetée'],\n  'Validation': ['Clôturée', 'En cours', 'Rejetée'],\n  'Rejetée':    [],\n  'Clôturée':   [],\n  'Escaladée':  ['En cours', 'Validation', 'Clôturée']\n};\n\nconst transitionsOK = transitionsAutorisees[ancienStatut] || [];\n\nif (!transitionsOK.includes(nouveauStatut)) {\n  throw new Error(`Transition non autorisée: ${ancienStatut} → ${nouveauStatut}. Transitions possibles: ${transitionsOK.join(', ')}`);\n}\n\nif (!complaintId || !nouveauStatut || !ancienStatut || !userId) {\n  throw new Error('Paramètres manquants: complaintId, nouveauStatut, ancienStatut, userId sont requis');\n}\n\nif (nouveauStatut === 'Rejetée' && !justification) {\n  throw new Error('Une justification est obligatoire pour rejeter une réclamation');\n}\n\nconst maintenant = new Date().toISOString();\n\nreturn [{\n  json: {\n    complaintId: parseInt(complaintId),\n    nouveauStatut,\n    ancienStatut,\n    userId: parseInt(userId),\n    commentaire: commentaire || '',\n    justification: justification || '',\n    dateChangement: maintenant,\n    estCloture: nouveauStatut === 'Clôturée',\n    estRejetee: nouveauStatut === 'Rejetée',\n    estValidation: nouveauStatut === 'Validation',\n    estEnCours: nouveauStatut === 'En cours'\n  }\n}];"
+      },
+      "id": "c3d4e5f6-0003-0003-0003-000000000002",
+      "name": "Valider Transition Statut",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  c.Id,\n  c.RefReclamation,\n  c.Type,\n  c.Priorite,\n  c.ClientId,\n  c.AgentAssigneId,\n  c.AgenceId,\n  c.Description,\n  c.DateCreation,\n  cl.Nom AS clientNom,\n  cl.Prenom AS clientPrenom,\n  cl.Email AS clientEmail,\n  cl.Telephone AS clientTel,\n  u.Nom AS agentNom,\n  u.Prenom AS agentPrenom,\n  u.Email AS agentEmail,\n  ag.Nom AS agenceNom,\n  s.Id AS slaId,\n  s.DateLimite AS slaDue,\n  DATEDIFF(HOUR, c.DateCreation, GETUTCDATE()) AS heuresEcoulees\nFROM Complaints c\nLEFT JOIN Clients cl ON cl.Id = c.ClientId\nLEFT JOIN Users u ON u.Id = c.AgentAssigneId\nLEFT JOIN Agencies ag ON ag.Id = c.AgenceId\nLEFT JOIN SLA s ON s.ComplaintId = c.Id AND s.Statut = 'EnCours'\nWHERE c.Id = {{ $json.complaintId }}",
+        "options": {}
+      },
+      "id": "c3d4e5f6-0003-0003-0003-000000000003",
+      "name": "Récupérer Détails Réclamation",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        720,
+        400
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "q3VHaPxFiPyITDZ8",
+          "name": "SmartBank SQL Server PERFECT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Mettre à jour le statut de la réclamation\nUPDATE Complaints\nSET Statut = '{{ $('Valider Transition Statut').item.json.nouveauStatut }}',\n    {{ $('Valider Transition Statut').item.json.estCloture ? `DateCloture = '${$('Valider Transition Statut').item.json.dateChangement}',` : '' }}\n    {{ $('Valider Transition Statut').item.json.estRejetee ? `DateRejet = '${$('Valider Transition Statut').item.json.dateChangement}', JustificationRejet = '${$('Valider Transition Statut').item.json.justification}',` : '' }}\n    DerniereModification = '{{ $('Valider Transition Statut').item.json.dateChangement }}'\nWHERE Id = {{ $('Valider Transition Statut').item.json.complaintId }};\n\n-- Insérer dans l'historique des statuts\nINSERT INTO ComplaintStatusHistory \n  (ComplaintId, StatutPrecedent, NouveauStatut, ChangePar, DateChangement, Commentaire, Justification)\nVALUES (\n  {{ $('Valider Transition Statut').item.json.complaintId }},\n  '{{ $('Valider Transition Statut').item.json.ancienStatut }}',\n  '{{ $('Valider Transition Statut').item.json.nouveauStatut }}',\n  {{ $('Valider Transition Statut').item.json.userId }},\n  '{{ $('Valider Transition Statut').item.json.dateChangement }}',\n  '{{ $('Valider Transition Statut').item.json.commentaire }}',\n  '{{ $('Valider Transition Statut').item.json.justification }}'\n);\n\n-- Clôturer le SLA si réclamation terminée\n{{ $('Valider Transition Statut').item.json.estCloture || $('Valider Transition Statut').item.json.estRejetee ? \n  `UPDATE SLA SET Statut = 'Terminé', DateFin = '${$('Valider Transition Statut').item.json.dateChangement}', EstRespectee = CASE WHEN DateLimite >= '${$('Valider Transition Statut').item.json.dateChangement}' THEN 1 ELSE 0 END WHERE ComplaintId = ${$('Valider Transition Statut').item.json.complaintId};` : '' }}\n\n-- Audit trail\nINSERT INTO AuditLogs (Action, TableCiblee, EnregistrementId, UtilisateurId, DateAction, Details)\nVALUES (\n  'STATUS_CHANGE',\n  'Complaints',\n  {{ $('Valider Transition Statut').item.json.complaintId }},\n  {{ $('Valider Transition Statut').item.json.userId }},\n  '{{ $('Valider Transition Statut').item.json.dateChangement }}',\n  '{{ $('Valider Transition Statut').item.json.ancienStatut }} → {{ $('Valider Transition Statut').item.json.nouveauStatut }}'\n);",
+        "options": {}
+      },
+      "id": "c3d4e5f6-0003-0003-0003-000000000004",
+      "name": "Mettre à Jour Statut BDD",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        960,
+        400
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "q3VHaPxFiPyITDZ8",
+          "name": "SmartBank SQL Server PERFECT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Valider Transition Statut').item.json.nouveauStatut }}",
+                    "rightValue": "Clôturée",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Valider Transition Statut').item.json.nouveauStatut }}",
+                    "rightValue": "Rejetée",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Valider Transition Statut').item.json.nouveauStatut }}",
+                    "rightValue": "En cours",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Valider Transition Statut').item.json.nouveauStatut }}",
+                    "rightValue": "Validation",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "fallbackOutput": "extra"
+      },
+      "id": "c3d4e5f6-0003-0003-0003-000000000005",
+      "name": "Type de Notification",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1200,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "notifications@stbbank.com.tn",
+        "toEmail": "={{ $('Récupérer Détails Réclamation').item.json.clientEmail }}",
+        "subject": "=[✅ Réclamation Résolue] {{ $('Récupérer Détails Réclamation').item.json.RefReclamation }}",
+        "emailType": "html",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <div style=\"background: #27ae60; color: white; padding: 25px; border-radius: 8px 8px 0 0; text-align: center;\">\n    <div style=\"font-size: 48px;\">✅</div>\n    <h1 style=\"margin: 10px 0 0; font-size: 22px;\">Réclamation Résolue</h1>\n    <p style=\"margin: 5px 0 0; font-size: 14px;\">STB Bank - SmartBank</p>\n  </div>\n  <div style=\"background: white; padding: 25px; border: 1px solid #e0e0e0;\">\n    <p>Cher(e) <strong>{{ $('Récupérer Détails Réclamation').item.json.clientPrenom }} {{ $('Récupérer Détails Réclamation').item.json.clientNom }}</strong>,</p>\n    <p>Nous avons le plaisir de vous informer que votre réclamation a été <strong style=\"color: #27ae60;\">résolue avec succès</strong>.</p>\n    <div style=\"background: #f0fff4; border: 1px solid #27ae60; padding: 15px; border-radius: 5px; margin: 20px 0;\">\n      <p style=\"margin: 0;\"><strong>Référence:</strong> {{ $('Récupérer Détails Réclamation').item.json.RefReclamation }}</p>\n      <p style=\"margin: 5px 0 0;\"><strong>Type:</strong> {{ $('Récupérer Détails Réclamation').item.json.Type }}</p>\n      <p style=\"margin: 5px 0 0;\"><strong>Traité en:</strong> {{ $('Récupérer Détails Réclamation').item.json.heuresEcoulees }} heures</p>\n      <p style=\"margin: 5px 0 0;\"><strong>Commentaire:</strong> {{ $('Valider Transition Statut').item.json.commentaire || 'Réclamation traitée avec succès' }}</p>\n    </div>\n    <p>Nous espérons avoir répondu à vos attentes. N'hésitez pas à nous contacter si vous avez d'autres questions.</p>\n    <p style=\"color: #888; font-size: 12px; border-top: 1px solid #eee; padding-top: 15px;\">STB Bank - Service Clientèle | stb.com.tn | 71 340 477</p>\n  </div>\n</div>",
+        "options": {}
+      },
+      "id": "c3d4e5f6-0003-0003-0003-000000000006",
+      "name": "Email Client - Résolution",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1440,
+        160
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "smartbank-smtp",
+          "name": "SmartBank SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "notifications@stbbank.com.tn",
+        "toEmail": "={{ $('Récupérer Détails Réclamation').item.json.clientEmail }}",
+        "subject": "=[❌ Réclamation Rejetée] {{ $('Récupérer Détails Réclamation').item.json.RefReclamation }}",
+        "emailType": "html",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <div style=\"background: #c0392b; color: white; padding: 25px; border-radius: 8px 8px 0 0; text-align: center;\">\n    <div style=\"font-size: 48px;\">❌</div>\n    <h1 style=\"margin: 10px 0 0; font-size: 22px;\">Réclamation Non Retenue</h1>\n    <p style=\"margin: 5px 0 0;\">STB Bank - SmartBank</p>\n  </div>\n  <div style=\"background: white; padding: 25px; border: 1px solid #e0e0e0;\">\n    <p>Cher(e) <strong>{{ $('Récupérer Détails Réclamation').item.json.clientPrenom }} {{ $('Récupérer Détails Réclamation').item.json.clientNom }}</strong>,</p>\n    <p>Après examen approfondi, votre réclamation <strong>{{ $('Récupérer Détails Réclamation').item.json.RefReclamation }}</strong> n'a pas pu être retenue pour la raison suivante :</p>\n    <div style=\"background: #fff5f5; border: 1px solid #c0392b; padding: 15px; border-radius: 5px; margin: 20px 0;\">\n      <strong>Justification : </strong>{{ $('Valider Transition Statut').item.json.justification }}\n    </div>\n    <p>Si vous souhaitez contester cette décision, veuillez contacter votre agence STB : <strong>{{ $('Récupérer Détails Réclamation').item.json.agenceNom }}</strong></p>\n    <p style=\"color: #888; font-size: 12px; border-top: 1px solid #eee; padding-top: 15px;\">STB Bank - Service Réclamations | stb.com.tn</p>\n  </div>\n</div>",
+        "options": {}
+      },
+      "id": "c3d4e5f6-0003-0003-0003-000000000007",
+      "name": "Email Client - Rejet",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1440,
+        320
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "smartbank-smtp",
+          "name": "SmartBank SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "notifications@stbbank.com.tn",
+        "toEmail": "={{ $('Récupérer Détails Réclamation').item.json.agentEmail }}",
+        "subject": "=[🔄 En Cours] Réclamation {{ $('Récupérer Détails Réclamation').item.json.RefReclamation }} - Démarrage du traitement",
+        "emailType": "html",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <div style=\"background: #2980b9; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;\">\n    <h1 style=\"margin: 0;\">🔄 Traitement en Cours</h1>\n    <p>STB SmartBank</p>\n  </div>\n  <div style=\"background: white; padding: 25px;\">\n    <p>Bonjour <strong>{{ $('Récupérer Détails Réclamation').item.json.agentPrenom }} {{ $('Récupérer Détails Réclamation').item.json.agentNom }}</strong>,</p>\n    <p>La réclamation <strong>{{ $('Récupérer Détails Réclamation').item.json.RefReclamation }}</strong> est maintenant <strong style=\"color: #2980b9;\">En cours de traitement</strong>.</p>\n    <p><strong>SLA Limite:</strong> {{ $('Récupérer Détails Réclamation').item.json.slaDue }}</p>\n    <p><strong>Commentaire:</strong> {{ $('Valider Transition Statut').item.json.commentaire || 'Traitement démarré' }}</p>\n    <div style=\"text-align: center; margin: 20px 0;\">\n      <a href=\"http://smartbank.stb.com.tn/complaints/{{ $('Valider Transition Statut').item.json.complaintId }}\" style=\"background: #2980b9; color: white; padding: 10px 25px; text-decoration: none; border-radius: 5px;\">Accéder à la Réclamation</a>\n    </div>\n  </div>\n</div>",
+        "options": {}
+      },
+      "id": "c3d4e5f6-0003-0003-0003-000000000008",
+      "name": "Email Agent - En Cours",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1440,
+        480
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "smartbank-smtp",
+          "name": "SmartBank SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "notifications@stbbank.com.tn",
+        "toEmail": "={{ $('Récupérer Détails Réclamation').item.json.agentEmail }}",
+        "subject": "=[📋 Validation Requise] Réclamation {{ $('Récupérer Détails Réclamation').item.json.RefReclamation }}",
+        "emailType": "html",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <div style=\"background: #8e44ad; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;\">\n    <h1 style=\"margin: 0;\">📋 En Attente de Validation</h1>\n    <p>STB SmartBank - Action Requise</p>\n  </div>\n  <div style=\"background: white; padding: 25px;\">\n    <p>La réclamation <strong>{{ $('Récupérer Détails Réclamation').item.json.RefReclamation }}</strong> est soumise pour validation.</p>\n    <p>Un responsable doit valider ou rejeter cette réclamation dans les plus brefs délais.</p>\n    <p><strong>Traité par:</strong> {{ $('Récupérer Détails Réclamation').item.json.agentPrenom }} {{ $('Récupérer Détails Réclamation').item.json.agentNom }}</p>\n    <p><strong>Commentaire:</strong> {{ $('Valider Transition Statut').item.json.commentaire }}</p>\n    <div style=\"text-align: center; margin: 20px 0;\">\n      <a href=\"http://smartbank.stb.com.tn/complaints/{{ $('Valider Transition Statut').item.json.complaintId }}/validate\" style=\"background: #8e44ad; color: white; padding: 10px 25px; text-decoration: none; border-radius: 5px;\">Valider / Rejeter</a>\n    </div>\n  </div>\n</div>",
+        "options": {}
+      },
+      "id": "c3d4e5f6-0003-0003-0003-000000000009",
+      "name": "Email - En Validation",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1440,
+        640
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "smartbank-smtp",
+          "name": "SmartBank SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5000/api/notifications/broadcast",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.SMARTBANK_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "={\n  \"complaintId\": {{ $('Valider Transition Statut').item.json.complaintId }},\n  \"ancienStatut\": \"{{ $('Valider Transition Statut').item.json.ancienStatut }}\",\n  \"nouveauStatut\": \"{{ $('Valider Transition Statut').item.json.nouveauStatut }}\",\n  \"refReclamation\": \"{{ $('Récupérer Détails Réclamation').item.json.RefReclamation }}\",\n  \"agentId\": {{ $('Récupérer Détails Réclamation').item.json.AgentAssigneId }},\n  \"clientId\": {{ $('Récupérer Détails Réclamation').item.json.ClientId }},\n  \"dateChangement\": \"{{ $('Valider Transition Statut').item.json.dateChangement }}\"\n}",
+        "options": {}
+      },
+      "id": "c3d4e5f6-0003-0003-0003-000000000010",
+      "name": "SignalR - Mise à Jour Temps Réel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"message\": \"Statut mis à jour avec succès\",\n  \"data\": {\n    \"complaintId\": {{ $('Valider Transition Statut').item.json.complaintId }},\n    \"ancienStatut\": \"{{ $('Valider Transition Statut').item.json.ancienStatut }}\",\n    \"nouveauStatut\": \"{{ $('Valider Transition Statut').item.json.nouveauStatut }}\",\n    \"dateChangement\": \"{{ $('Valider Transition Statut').item.json.dateChangement }}\"\n  }\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "c3d4e5f6-0003-0003-0003-000000000011",
+      "name": "Réponse Finale",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1920,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook - Changement Statut": {
+      "main": [
+        [
+          {
+            "node": "Valider Transition Statut",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valider Transition Statut": {
+      "main": [
+        [
+          {
+            "node": "Récupérer Détails Réclamation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Récupérer Détails Réclamation": {
+      "main": [
+        [
+          {
+            "node": "Mettre à Jour Statut BDD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mettre à Jour Statut BDD": {
+      "main": [
+        [
+          {
+            "node": "Type de Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Type de Notification": {
+      "main": [
+        [
+          {
+            "node": "Email Client - Résolution",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email Client - Rejet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email Agent - En Cours",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email - En Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Client - Résolution": {
+      "main": [
+        [
+          {
+            "node": "SignalR - Mise à Jour Temps Réel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Client - Rejet": {
+      "main": [
+        [
+          {
+            "node": "SignalR - Mise à Jour Temps Réel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Agent - En Cours": {
+      "main": [
+        [
+          {
+            "node": "SignalR - Mise à Jour Temps Réel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email - En Validation": {
+      "main": [
+        [
+          {
+            "node": "SignalR - Mise à Jour Temps Réel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SignalR - Mise à Jour Temps Réel": {
+      "main": [
+        [
+          {
+            "node": "Réponse Finale",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "meta": {
+    "instanceId": "smartbank-n8n"
+  },
+  "id": "smartbank-wf-003",
+  "tags": [
+    {
+      "id": "tag1",
+      "name": "SmartBank"
+    },
+    {
+      "id": "tag5",
+      "name": "Notifications"
+    },
+    {
+      "id": "tag6",
+      "name": "Statut"
+    }
+  ]
+}

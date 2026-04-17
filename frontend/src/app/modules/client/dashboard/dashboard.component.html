@@ -1,0 +1,249 @@
+<div class="dashboard-container fade-in">
+  <!-- Header -->
+  <header class="main-header">
+    <div class="header-inner">
+      <a routerLink="/" class="brand">
+        <img src="assets/images/stb-logo.png" alt="STB Bank" class="brand-logo" />
+        <span class="brand-text">Client Portal</span>
+      </a>
+
+      <nav class="center-nav">
+        <a routerLink="/client/dashboard" routerLinkActive="active">Tableau de bord</a>
+        <a routerLink="/depot">Déposer</a>
+        <a routerLink="/suivi">Suivi</a>
+      </nav>
+
+      <div class="user-action">
+        <div class="profile-toggle" (click)="toggleProfileMenu()">
+          <div class="avatar-circle">
+            {{ initials() }}
+          </div>
+          <span class="user-fullname">{{ user()?.fullName }}</span>
+          <svg viewBox="0 0 24 24" fill="none" class="chevron" [class.open]="showProfileMenu()">
+            <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        @if (showProfileMenu()) {
+          <div class="profile-dropdown animate-slide-down">
+            <div class="dropdown-header">
+              <strong>{{ user()?.fullName }}</strong>
+              <span>{{ user()?.email }}</span>
+            </div>
+            <div class="dropdown-divider"></div>
+            <a routerLink="/profile" (click)="showProfileMenu.set(false)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              Mon profil
+            </a>
+            <button class="logout-btn" (click)="logout()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+              Déconnexion
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  </header>
+
+  <main class="content-area">
+    <!-- Hero Section -->
+    <section class="hero-section">
+      <div class="hero-main">
+        <div class="hero-welcome">
+          <h1>Bonjour, {{ user()?.fullName }} 👋</h1>
+          <p>Gardez le contrôle sur vos réclamations bancaires en un coup d'œil.</p>
+          <a routerLink="/depot" class="btn-create">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Nouvelle réclamation
+          </a>
+        </div>
+        <div class="hero-time">
+          <div class="time-box">
+            <span class="live-label">LIVE</span>
+            <span class="current-time">{{ currentTime() }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats Grid 2x2 -->
+    <section class="stats-section">
+      <div class="stats-grid-modern">
+        <!-- Total -->
+        <div class="modern-card stat-card-blue">
+          <div class="card-body">
+            <div class="stat-icon-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+            </div>
+            <div class="stat-content">
+              <span class="value">{{ stats().total }}</span>
+              <span class="label">Total réclamations</span>
+            </div>
+          </div>
+          <div class="progress-container">
+            <div class="progress-bar" style="width: 100%"></div>
+          </div>
+        </div>
+
+        <!-- In Progress -->
+        <div class="modern-card stat-card-orange">
+          <div class="card-body">
+            <div class="stat-icon-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v6m0 8v6M4.93 4.93l4.24 4.24m5.66 5.66l4.24 4.24M2 12h6m8 0h6M4.93 19.07l4.24-4.24m5.66-5.66l4.24-4.24"></path></svg>
+            </div>
+            <div class="stat-content">
+              <span class="value">{{ stats().active }}</span>
+              <span class="label">En cours de traitement</span>
+            </div>
+          </div>
+          <div class="progress-container">
+            <div class="progress-bar" [style.width.%]="(stats().active / stats().total) * 100"></div>
+          </div>
+        </div>
+
+        <!-- Resolved -->
+        <div class="modern-card stat-card-green">
+          <div class="card-body">
+            <div class="stat-icon-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </div>
+            <div class="stat-content">
+              <span class="value">{{ stats().resolved }}</span>
+              <span class="label">Dossiers résolus</span>
+            </div>
+          </div>
+          <div class="progress-container">
+            <div class="progress-bar" [style.width.%]="(stats().resolved / stats().total) * 100"></div>
+          </div>
+        </div>
+
+        <!-- Success Rate -->
+        <div class="modern-card stat-card-purple">
+          <div class="card-body">
+            <div class="stat-icon-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+            </div>
+            <div class="stat-content">
+              <span class="value">{{ resolutionRate() }}%</span>
+              <span class="label">Taux de résolution</span>
+            </div>
+          </div>
+          <div class="progress-container">
+            <div class="progress-bar" [style.width.%]="resolutionRate()"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- History Table -->
+    <section class="history-section">
+      <div class="modern-card table-card">
+        <div class="card-header-flex">
+          <h2>Mes dernières réclamations</h2>
+          <button class="btn-refresh" (click)="loadData()" [disabled]="loading()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" [class.spin]="loading()"><path d="M23 4v6h-6"></path><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+            Actualiser
+          </button>
+        </div>
+
+        @if (loading()) {
+          <div class="table-loading">
+            <div class="shimmer-row" *ngFor="let i of [1,2,3]"></div>
+          </div>
+        } @else if (complaints().length === 0) {
+          <div class="empty-state-modern">
+            <div class="empty-illustration">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            </div>
+            <h3>Aucune réclamation déposée</h3>
+            <p>Commencez par déposer votre premier dossier pour suivre son évolution ici.</p>
+            <a routerLink="/depot" class="btn-create btn-center">Déposer ma première réclamation</a>
+          </div>
+        } @else {
+          <div class="table-wrapper">
+            <table class="modern-table">
+              <thead>
+                <tr>
+                  <th>Référence</th>
+                  <th>Objet</th>
+                  <th>Catégorie</th>
+                  <th>Date</th>
+                  <th>Statut</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (c of complaints(); track c.id) {
+                  <tr>
+                    <td><span class="ref-tag">{{ c.reference }}</span></td>
+                    <td class="td-title">{{ c.title }}</td>
+                    <td><span class="cat-badge">{{ c.complaintType }}</span></td>
+                    <td class="td-date">{{ formatDate(c.createdAt) }}</td>
+                    <td>
+                      <span class="status-badge" [attr.data-status]="c.status">
+                        {{ c.status }}
+                      </span>
+                    </td>
+                    <td>
+                      <div class="action-cell">
+                        <a [routerLink]="['/suivi']" [queryParams]="{ reference: c.reference, email: user()?.email }" class="btn-view">
+                          Voir
+                        </a>
+                        @if (isClosed(c.status) && !c.hasRating) {
+                          <button class="btn-rate" (click)="openRating(c)">Note</button>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </section>
+  </main>
+
+  <footer class="main-footer">
+    <div class="footer-inner">
+      <span>© {{ now.getFullYear() }} STB Bank. Tous droits réservés.</span>
+      <div class="footer-links">
+        <a href="#">Support</a>
+        <a href="#">Confidentialité</a>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<!-- Evaluation Modal remains compatible with new styles -->
+@if (ratingComplaint()) {
+  <div class="modal-backdrop">
+    <div class="modal-content animate-pop">
+      <button class="close-btn" (click)="closeRating()">×</button>
+      <h3>Évaluer le service</h3>
+      <p class="modal-desc">Votre avis nous aide à nous améliorer.</p>
+
+      @if (ratingSuccess()) {
+        <div class="success-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <p>Merci ! Votre note a été enregistrée.</p>
+        </div>
+      } @else {
+        <form (submit)="submitRating(); $event.preventDefault()">
+          <div class="rating-group" *ngFor="let field of ['satisfaction', 'speed', 'quality']">
+            <label>{{ field === 'satisfaction' ? 'Satisfaction Globale' : field === 'speed' ? 'Rapidité' : 'Qualité' }}</label>
+            <div class="stars-row">
+              <span class="star" *ngFor="let s of stars(5)" [class.filled]="s <= rating[field]" (click)="setRating(field, s)">★</span>
+            </div>
+          </div>
+          <div class="mt-4">
+            <textarea [(ngModel)]="rating.feedback" name="feedback" rows="3" placeholder="Commentaire..."></textarea>
+          </div>
+          <div class="modal-actions">
+            <button type="submit" class="btn-primary-modern" [disabled]="ratingLoading()">Valider</button>
+          </div>
+        </form>
+      }
+    </div>
+  </div>
+}

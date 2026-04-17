@@ -1,0 +1,213 @@
+<div class="auth-page auth-modern-page">
+  <div class="auth-modern-bg" aria-hidden="true"></div>
+
+  <header class="auth-modern-header">
+    <a routerLink="/" class="auth-modern-logo">
+      <img src="assets/images/stb-logo.png" alt="STB Bank" />
+      <span class="auth-modern-subtitle">Société Tunisienne de Banque</span>
+    </a>
+  </header>
+
+  <main class="auth-modern-main">
+    <div class="auth-modern-card-wrap">
+    <div class="auth-modern-card">
+      <h1 class="auth-modern-card-title">Compte Suivi Réclamations</h1>
+      <p class="auth-modern-card-desc">Activez votre espace personnel pour centraliser vos demandes, suivre leur avancement et évaluer la qualité de traitement.</p>
+
+      @if (error()) {
+        <div class="auth-modern-alert error">{{ error() }}</div>
+      }
+      @if (success()) {
+        <div class="auth-modern-alert success">{{ success() }}</div>
+      }
+
+      <button type="button" class="auth-modern-google" (click)="onGoogle()" [disabled]="loading()">
+        <svg viewBox="0 0 24 24" width="20" height="20">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        S'inscrire avec Google
+      </button>
+
+      <div class="auth-mode-toggle">
+        <button type="button" [class.active]="!isAgentMode()" (click)="toggleMode(false)">Client</button>
+        <button type="button" [class.active]="isAgentMode()" (click)="toggleMode(true)">Agent de Banque</button>
+      </div>
+
+      <div class="auth-modern-divider">
+        {{ isAgentMode() ? 'Informations Professionnelles' : 'ou remplir le formulaire' }}
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        @if (isAgentMode()) {
+          <div class="agent-special-fields auth-form-grid">
+            <div class="auth-modern-field">
+              <label>Gouvernorat</label>
+              <select formControlName="governorate" class="auth-modern-input">
+                <option value="">Choisir un gouvernorat...</option>
+                @for (g of governorates; track g) {
+                  <option [value]="g">{{ g }}</option>
+                }
+              </select>
+            </div>
+            <div class="auth-modern-field">
+              <label>Agence de rattachement</label>
+              <select formControlName="agencyId" class="auth-modern-input">
+                <option [ngValue]="null">Sélectionner une agence...</option>
+                @for (a of filteredAgencies(); track a.id) {
+                  <option [ngValue]="a.id">{{ a.name }}</option>
+                }
+              </select>
+            </div>
+            <div class="auth-modern-field half-width">
+              <label>Identifiant Professionnel (Matricule)</label>
+              <input type="text" formControlName="professionalId" placeholder="ex: STB-2024-001" class="auth-modern-input" />
+            </div>
+          </div>
+        }
+
+        <div class="auth-modern-field">
+          <label>Nom &amp; Prénom</label>
+          <input type="text" formControlName="fullName" placeholder="Mohamed Ben Ali" class="auth-modern-input" />
+        </div>
+
+        <div class="auth-modern-field">
+          <label>Civilité</label>
+          <div class="civility-segmented-control">
+            <label class="civility-opt">
+              <input type="radio" formControlName="gender" value="Male" />
+              <div class="civility-box">M.</div>
+            </label>
+            <label class="civility-opt">
+              <input type="radio" formControlName="gender" value="Female" />
+              <div class="civility-box">Mme.</div>
+            </label>
+            <div class="civility-slider"></div>
+          </div>
+        </div>
+
+        <div class="auth-modern-field">
+          <label>Adresse Email</label>
+          <input type="email" formControlName="email" placeholder="votre&#64;email.com" class="auth-modern-input" />
+          @if (form.get('email')?.invalid && form.get('email')?.touched) {
+            <span class="auth-modern-field-err">Email invalide</span>
+          }
+        </div>
+        <div class="auth-modern-field">
+          <label>Numéro de Téléphone</label>
+          <input type="tel" formControlName="phone" placeholder="+216 12 345 678" class="auth-modern-input" />
+        </div>
+        <div class="auth-modern-field">
+          <label>Ville de Résidence <span class="auth-field-required">*</span></label>
+          <div class="auth-modern-input-wrap">
+            <span class="auth-modern-prefix-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            </span>
+            <input type="text" formControlName="city" placeholder="Ex. Tunis, Sousse, Sfax…" class="auth-modern-input auth-modern-input-padded" />
+          </div>
+          @if (form.get('city')?.invalid && form.get('city')?.touched) {
+            <span class="auth-modern-field-err">La ville de résidence est obligatoire</span>
+          }
+        </div>
+        <div class="auth-modern-field">
+          <label>Créer un Mot de Passe</label>
+          <div class="auth-modern-input-wrap">
+            <input
+              [type]="showPass() ? 'text' : 'password'"
+              formControlName="password"
+              placeholder="Min. 8 caractères"
+              class="auth-modern-input"
+            />
+            <button type="button" class="auth-modern-eye" (click)="showPass.set(!showPass())" [attr.aria-label]="showPass() ? 'Masquer' : 'Afficher'">
+              @if (showPass()) {
+                <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              } @else {
+                <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              }
+            </button>
+          </div>
+        </div>
+        <div class="auth-modern-field">
+          <label>Confirmer le Mot de Passe</label>
+          <div class="auth-modern-input-wrap">
+            <input
+              [type]="showPass2() ? 'text' : 'password'"
+              formControlName="confirmPassword"
+              placeholder="Répétez le mot de passe"
+              class="auth-modern-input"
+            />
+            <button type="button" class="auth-modern-eye" (click)="showPass2.set(!showPass2())" [attr.aria-label]="showPass2() ? 'Masquer' : 'Afficher'">
+              @if (showPass2()) {
+                <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              } @else {
+                <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              }
+            </button>
+          </div>
+          @if (form.get('confirmPassword')?.touched && form.value.password !== form.value.confirmPassword) {
+            <span class="auth-modern-field-err">Les mots de passe ne correspondent pas</span>
+          }
+        </div>
+        <div class="auth-modern-field auth-modern-checkbox-wrap">
+          <label class="auth-modern-checkbox-label">
+            <input type="checkbox" formControlName="acceptTerms" class="auth-modern-checkbox" />
+            <span>J'accepte les <a href="#" (click)="$event.preventDefault()">Conditions d'Utilisation</a></span>
+          </label>
+          @if (form.get('acceptTerms')?.invalid && form.get('acceptTerms')?.touched) {
+            <span class="auth-modern-field-err">Vous devez accepter les conditions</span>
+          }
+        </div>
+        <button type="submit" class="auth-modern-btn" [disabled]="form.invalid || loading()">
+          @if (loading()) {
+            <span class="auth-modern-spin"></span> Création...
+          } @else {
+            S'inscrire
+          }
+        </button>
+      </form>
+
+      <p class="auth-modern-switch">
+        Vous avez déjà un compte ? <a routerLink="/auth/login">Se connecter</a>
+      </p>
+    </div>
+    </div>
+  </main>
+
+  <div class="auth-modern-bottom">
+    <aside class="auth-support-box">
+      <h2 class="auth-support-title">Support Client STB</h2>
+      <div class="auth-support-line">📞 Call Center <strong>71 110 000</strong></div>
+      <div class="auth-support-line">✉️ Email: <strong>support&#64;stb.com.tn</strong></div>
+      <a href="#" class="auth-support-btn" (click)="$event.preventDefault()">Chat en Ligne</a>
+    </aside>
+  </div>
+
+  <footer class="auth-modern-footer">
+    <span class="auth-modern-feat">
+      <span class="auth-modern-feat-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </span>
+      Sécurisé
+    </span>
+    <span class="auth-modern-feat">
+      <span class="auth-modern-feat-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </span>
+      Rapide
+    </span>
+    <span class="auth-modern-feat">
+      <span class="auth-modern-feat-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      </span>
+      Suivi en Temps Réel
+    </span>
+    <span class="auth-modern-feat">
+      <span class="auth-modern-feat-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+      </span>
+      Support 24/7
+    </span>
+  </footer>
+</div>

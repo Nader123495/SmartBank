@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <base href="/" />
+    <title>Système de Gestion des Réclamations Bancaires: SmartBank Complaints Platform</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Système de Gestion des Réclamations Bancaires: SmartBank Complaints Platform" />
+    <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon.svg" />
+    <link rel="apple-touch-icon" href="assets/favicon.svg" />
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet"/>
+    <script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script>
+    <script>
+      (function() {
+        var t = localStorage.getItem('smartbank_theme');
+        if (t !== 'dark' && t !== 'light') t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', t);
+      })();
+    </script>
+  </head>
+  <body>
+    <app-root></app-root>
+  </body>
+</html>
+

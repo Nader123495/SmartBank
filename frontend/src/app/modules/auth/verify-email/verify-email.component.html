@@ -1,0 +1,95 @@
+<div class="auth-page">
+  <nav class="auth-navbar">
+    <div class="auth-navbar-inner">
+      <a routerLink="/auth/login" class="auth-nav-logo">
+        <img src="assets/images/smartbank-logo.png" alt="Smart Bank" />
+        <span>SmartBank Complaints Platform</span>
+      </a>
+      <div class="auth-nav-links">
+        <a routerLink="/depot">Déposer une réclamation</a>
+        <a routerLink="/suivi">Suivi de ma réclamation</a>
+        <span class="auth-nav-sep" aria-hidden="true"></span>
+        <a routerLink="/auth/login">Connexion</a>
+        <a routerLink="/auth/signup" class="auth-nav-cta">Créer un compte</a>
+      </div>
+    </div>
+  </nav>
+  <div class="auth-wrap">
+  <div class="auth-left">
+    <div class="grid-bg"></div>
+    <div class="glow glow1"></div>
+    <div class="glow glow2"></div>
+    <div class="auth-brand">
+      <div class="auth-logo">
+        <img src="assets/images/smartbank-logo.png" alt="Smart Bank - Système de gestion des réclamations bancaires" class="auth-logo-img" />
+      </div>
+      <div class="auth-brand-text"><h1>SmartBank Complaints Platform</h1><span>Système de Gestion des Réclamations Bancaires</span></div>
+    </div>
+    <div class="auth-hero">
+      <div class="live-badge"><span class="live-dot"></span>Vérification email</div>
+      <h2>Vérifiez<br/>votre<br/><em>compte</em></h2>
+      <p>Entrez le code à 6 chiffres envoyé à votre adresse email. Le code est valide 15 minutes.</p>
+    </div>
+  </div>
+
+  <div class="auth-right">
+    <div class="auth-card">
+      <div class="auth-progress"><div class="auth-prog-fill" style="width:75%"></div></div>
+      <div class="auth-screen active">
+        <div class="auth-tag">✉️ Vérification</div>
+        <h2>Code de vérification</h2>
+        <p class="sub">Saisissez le code reçu par email</p>
+
+        @if (error()) {
+          <div class="alert-banner error">{{ error() }}</div>
+        }
+        @if (info()) {
+          <div class="alert-banner success">{{ info() }}</div>
+        }
+
+        @if (!verified()) {
+          <form [formGroup]="form" (ngSubmit)="submit()">
+            <div class="fg2">
+              <label>Adresse e-mail</label>
+              <div class="inp-wrap">
+                <span class="ico">✉️</span>
+                <input type="email" formControlName="email" placeholder="votre@email.com" />
+              </div>
+            </div>
+            <div class="fg2">
+              <label>Code à 6 chiffres</label>
+              <div class="inp-wrap" [class.err]="form.get('code')?.invalid && form.get('code')?.touched">
+                <span class="ico">🔢</span>
+                <input type="text" formControlName="code" placeholder="000000" maxlength="6" inputmode="numeric" />
+              </div>
+              @if (form.get('code')?.invalid && form.get('code')?.touched) {
+                <div class="field-err">Entrez un code à 6 chiffres</div>
+              }
+            </div>
+            <button type="submit" class="btn-auth" [disabled]="form.invalid || loading()">
+              @if (loading()) { <span class="spin"></span> Vérification... } @else { Vérifier et accéder au tableau de bord → }
+            </button>
+          </form>
+
+          <div class="auth-switch" style="margin-top:1rem">
+            <button type="button" class="link-btn" (click)="resend()">Renvoyer le code de vérification</button>
+          </div>
+
+          <div class="auth-switch" style="margin-top:0.5rem">
+            <a routerLink="/auth/login">← Retour à la connexion</a>
+          </div>
+        } @else {
+          <div class="success-screen">
+            <div class="success-icon">✅</div>
+            <p>Votre adresse e-mail a été validée. Votre compte est maintenant en attente de vérification par un responsable de la banque.</p>
+            <div class="auth-switch" style="margin-top:2rem">
+              <a routerLink="/auth/login" class="btn-auth" style="text-align:center; text-decoration:none">Retour à la connexion</a>
+            </div>
+          </div>
+        }
+      </div>
+      <div class="auth-foot">Système de Gestion des Réclamations Bancaires — SmartBank Complaints Platform © 2025</div>
+    </div>
+  </div>
+  </div>
+</div>

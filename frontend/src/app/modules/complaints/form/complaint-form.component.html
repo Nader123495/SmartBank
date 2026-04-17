@@ -1,0 +1,249 @@
+<div class="form-page">
+  <div class="form-header">
+    <div class="header-text">
+      @if (auth.isClient()) {
+        <h1>{{ editId() ? 'Modifier la Réclamation' : 'Nouvelle Réclamation' }}</h1>
+        <p class="subtitle">
+          @if (step() === 1) { Sélectionnez la catégorie de votre problème. }
+          @else { Renseignez le formulaire pour votre réclamation <strong>{{ selectedCategory()?.name }}</strong>. }
+        </p>
+      } @else {
+        <h1>{{ editId() ? 'Modifier la Réclamation' : 'Enregistrement de Réclamation' }}</h1>
+        <p class="subtitle">Saisie administrative d'une réclamation pour un client.</p>
+      }
+    </div>
+    @if (step() === 2) {
+      <button type="button" class="btn-cancel-top" (click)="goBack()">← Changer de catégorie</button>
+    } @else {
+      <button type="button" class="btn-cancel-top" (click)="cancel()">Annuler</button>
+    }
+  </div>
+
+  <!-- ÉTAPE 1 : SÉLECTION DE CATÉGORIE -->
+  @if (step() === 1) {
+    <div class="category-grid">
+      @for (cat of categories; track cat.id) {
+        <div class="category-card" [style.--cat-color]="cat.color" (click)="selectCategory(cat)">
+          <div class="cat-icon-wrapper">
+            <span class="cat-icon">{{ cat.icon }}</span>
+          </div>
+          <div class="cat-content">
+            <h3>{{ cat.name }}</h3>
+            <p>{{ cat.description }}</p>
+          </div>
+          <div class="cat-arrow">→</div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ÉTAPE 2 : FORMULAIRE DYNAMIQUE -->
+  @if (step() === 2) {
+    <div class="form-card animate-in">
+      <form [formGroup]="form" (ngSubmit)="submit()">
+
+        <!-- Section 1 : Informations de la Réclamation -->
+        <section class="form-section">
+          <div class="section-title">
+            <span class="section-icon">📋</span>
+            <span class="section-num">1</span>
+            <h2>Détails de la Réclamation</h2>
+          </div>
+          
+          <div class="field-grid">
+            @if (!auth.isClient()) {
+              <div class="field" [class.error]="isInvalid('complaintTypeId')">
+                <label>Catégorie Principale <span class="req">*</span></label>
+                <select [value]="selectedCategory()?.id" (change)="selectCategory(categories[$any($event.target).selectedIndex - 1])">
+                  <option value="">— Sélectionner une catégorie —</option>
+                  @for (cat of categories; track cat.id) {
+                    <option [value]="cat.id">{{ cat.name }}</option>
+                  }
+                </select>
+              </div>
+            }
+
+            <div class="field full" [class.error]="isInvalid('title')">
+              <label>Objet de la réclamation <span class="req">*</span></label>
+              <input formControlName="title" placeholder="Ex. Blocage non attendu de carte Visa Gold" />
+              @if (isInvalid('title')) { <span class="err">Objet obligatoire (min. 5 caractères)</span> }
+            </div>
+
+            <div class="field" [class.error]="isInvalid('complaintTypeId')">
+              <label>Type spécifique <span class="req">*</span></label>
+              <select formControlName="complaintTypeId">
+                <option value="">— Sélectionner —</option>
+                @for (t of filteredComplaintTypes(); track t.id) {
+                  <option [value]="t.id">{{ t.name }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="field" [class.error]="isInvalid('channel')">
+              <label>Canal de soumission <span class="req">*</span></label>
+              <select formControlName="channel">
+                <option value="">— Sélectionner —</option>
+                @for (c of channels; track c) {
+                  <option [value]="c">{{ c }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="field full">
+              <label>Priorité perçue</label>
+              <div class="priority-segmented">
+                @for (p of priorityOptions; track p.value) {
+                  <button type="button" class="segmented-btn" [class.selected]="form.get('priority')?.value === p.value"
+                    (click)="form.patchValue({ priority: p.value })">
+                    {{ p.label }}
+                  </button>
+                }
+              </div>
+            </div>
+
+            <!-- CHAMPS SPÉCIFIQUES PAR CATÉGORIE -->
+             
+            <!-- Carte Bancaire -->
+            @if (selectedCategory()?.id === 'carte') {
+              <div class="field animate-fade-in" [class.error]="isInvalid('cardLastFour')">
+                <label>4 derniers chiffres de la carte</label>
+                <input formControlName="cardLastFour" placeholder="XXXX" maxlength="4" />
+              </div>
+              <div class="field animate-fade-in">
+                <label>Date de l'incident</label>
+                <input type="date" formControlName="incidentDate" />
+              </div>
+            }
+
+            <!-- Compte Bancaire -->
+            @if (selectedCategory()?.id === 'compte') {
+              <div class="field animate-fade-in">
+                <label>Type de compte</label>
+                <select formControlName="accountType">
+                  <option value="">— Sélectionner —</option>
+                  <option value="Courant">Compte Courant</option>
+                  <option value="Épargne">Compte Épargne</option>
+                  <option value="Professionnel">Compte Professionnel</option>
+                </select>
+              </div>
+              <div class="field animate-fade-in">
+                <label>Montant concerné (TND)</label>
+                <input type="number" formControlName="amount" placeholder="0.000" />
+              </div>
+            }
+
+            <!-- Virement -->
+            @if (selectedCategory()?.id === 'virement') {
+              <div class="field full animate-fade-in">
+                <label>Référence du virement</label>
+                <input formControlName="virementReference" placeholder="Ex. VIR-2024-XXXX" />
+              </div>
+              <div class="field animate-fade-in">
+                <label>Montant (TND)</label>
+                <input type="number" formControlName="amount" placeholder="0.000" />
+              </div>
+              <div class="field animate-fade-in">
+                <label>Date du virement</label>
+                <input type="date" formControlName="incidentDate" />
+              </div>
+            }
+
+            <!-- Crédit -->
+            @if (selectedCategory()?.id === 'credit') {
+              <div class="field animate-fade-in">
+                <label>Type de crédit</label>
+                <input formControlName="creditType" placeholder="Ex. Crédit Immobilier, Consommation..." />
+              </div>
+              <div class="field animate-fade-in">
+                <label>Numéro de dossier</label>
+                <input formControlName="dossierNumber" placeholder="Ex. DOS-XXXX-2024" />
+              </div>
+            }
+
+            <div class="field full" [class.error]="isInvalid('description')">
+              <label>Description détaillée <span class="req">*</span></label>
+              <textarea formControlName="description" rows="5"
+                placeholder="Expliquez votre problème en détail..."></textarea>
+              @if (isInvalid('description')) { <span class="err">Description obligatoire (min. 20 caractères)</span> }
+            </div>
+          </div>
+        </section>
+
+        <!-- Section 2 : Informations Client -->
+        <section class="form-section">
+          <div class="section-title">
+            <span class="section-icon">👤</span>
+            <span class="section-num">2</span>
+            <h2>{{ auth.isClient() ? 'Vos Informations' : 'Coordonnées du Client' }}</h2>
+          </div>
+          <div class="field-grid two-cols">
+            <div class="field">
+              <label>Nom et Prénom</label>
+              <input formControlName="clientName" placeholder="Votre nom" />
+            </div>
+            <div class="field" [class.error]="isInvalid('clientEmail')">
+              <label>Email de contact</label>
+              <input formControlName="clientEmail" type="email" placeholder="votre@email.com" />
+            </div>
+            <div class="field">
+              <label>Téléphone</label>
+              <input formControlName="clientPhone" placeholder="+216 XX XXX XXX" />
+            </div>
+            <div class="field">
+              <label>Numéro de compte (RIB)</label>
+              <input formControlName="clientAccountNumber" placeholder="TUN XX XXXX XXXX" />
+            </div>
+          </div>
+        </section>
+
+        <!-- Section 3 : Localisation (Automatique) -->
+        <section class="form-section location-section">
+          <div class="section-title">
+            <span class="section-icon">📍</span>
+            <span class="section-num">3</span>
+            <h2>Localisation <span class="optional">(Détection auto)</span></h2>
+          </div>
+
+          <div class="location-status-row">
+            <div class="location-badge" [class]="locationStatusClass">
+              <span class="location-badge-icon">{{ locationIcon }}</span>
+              <span class="location-badge-label">{{ locationStatusLabel }}</span>
+              @if (locationStatus() === 'detecting') { <span class="loc-spin"></span> }
+            </div>
+            @if (locationStatus() !== 'idle' && locationStatus() !== 'detecting') {
+              <button type="button" class="btn-retry-loc" (click)="$event.preventDefault(); retryLocation()">🔄</button>
+            }
+          </div>
+
+          @if (locationStatus() !== 'idle') {
+            <div class="field location-city-field">
+              <label>Ville détectée (ajustable @if(latitude()){ à {{ latitude()! | number:'1.2-2' }}°N })</label>
+              <div class="city-input-wrap">
+                <input formControlName="locationCity" placeholder="Ville..." class="city-input" (input)="onManualCityChange()" />
+              </div>
+            </div>
+          }
+
+          @if (mapReady() && latitude() !== null) {
+            <div class="map-wrapper animate-fade-in">
+              <div id="leaflet-map-container" class="leaflet-map"></div>
+            </div>
+          }
+        </section>
+
+        @if (error()) {
+          <div class="form-error">⚠️ {{ error() }}</div>
+        }
+
+        <div class="form-actions">
+          <button type="button" class="btn-ghost" (click)="goBack()">Retour</button>
+          <button type="submit" class="btn-primary" [disabled]="loading()">
+            @if (loading()) { <span class="spin"></span> }
+            {{ editId() ? 'Enregistrer les modifications' : 'Soumettre la réclamation' }}
+            <span class="btn-arrow">→</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+</div>

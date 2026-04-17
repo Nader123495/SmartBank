@@ -1,0 +1,18 @@
+/* Styles de la liste des réclamations */
+.actions-td {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.btn-status {
+  white-space: nowrap;
+}
+
+.empty-state .error-detail {
+  color: #dc2626;
+  font-size: 0.9rem;
+  word-break: break-word;
+  margin: 0.5rem 0 0 0;
+}
+

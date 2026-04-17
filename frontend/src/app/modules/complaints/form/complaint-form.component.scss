@@ -1,0 +1,360 @@
+.form-page {
+  padding: 1.5rem 2rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--border-color);
+  
+  h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 0.25rem 0;
+  }
+  
+  .subtitle {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0;
+  }
+}
+
+.btn-cancel-top {
+  padding: 0.6rem 1.2rem;
+  background: white;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  color: var(--gray-700);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: var(--gray-50);
+    border-color: var(--gray-400);
+  }
+}
+
+/* ─── Étape 1 : Cartes de Catégorie ─────────────────────────────────── */
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  perspective: 1000px;
+}
+
+.category-card {
+  --cat-color: #3b82f6; // Default
+  background: white;
+  border-radius: 16px;
+  padding: 1.75rem;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  border: 2px solid transparent;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+
+  &:hover {
+    transform: translateY(-8px) scale(1.02);
+    border-color: var(--cat-color);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    
+    .cat-arrow {
+      transform: translateX(5px);
+      opacity: 1;
+    }
+  }
+
+  .cat-icon-wrapper {
+    width: 60px;
+    height: 60px;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--cat-color) 12%, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    
+    .cat-icon {
+      font-size: 1.85rem;
+    }
+  }
+
+  .cat-content {
+    flex: 1;
+    
+    h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--gray-800);
+      margin: 0 0 0.35rem 0;
+    }
+    
+    p {
+      font-size: 0.9rem;
+      color: var(--gray-500);
+      line-height: 1.4;
+      margin: 0;
+    }
+  }
+
+  .cat-arrow {
+    font-size: 1.25rem;
+    color: var(--cat-color);
+    opacity: 0.5;
+    font-weight: bold;
+    transition: all 0.3s;
+  }
+}
+
+/* ─── Étape 2 : Formulaire ─────────────────────────────────────────── */
+.form-card {
+  background: var(--bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  padding: 2rem;
+}
+
+.form-section {
+  margin-bottom: 2rem;
+  
+  &:last-of-type { margin-bottom: 0; }
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.75rem;
+  
+  .section-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  
+  h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+  }
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  
+  &.two-cols { grid-template-columns: 1fr 1fr; }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  
+  &.full { grid-column: 1 / -1; }
+  
+  label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--gray-700);
+    
+    .req { color: #ef4444; margin-left: 2px; }
+  }
+  
+  input, select, textarea {
+    padding: 0.75rem 1rem;
+    border: 1.5px solid var(--gray-200);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+    
+    &:focus {
+      outline: none;
+      border-color: var(--blue-500);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--blue-500) 15%, transparent);
+    }
+  }
+  
+  &.error {
+    input, select, textarea { border-color: #ef4444; }
+    .err { color: #ef4444; font-size: 0.75rem; font-weight: 500; }
+  }
+}
+
+.priority-segmented {
+  display: flex;
+  background: var(--gray-100);
+  padding: 4px;
+  border-radius: 10px;
+  gap: 4px;
+  
+  .segmented-btn {
+    flex: 1;
+    padding: 0.5rem;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--gray-600);
+    cursor: pointer;
+    transition: all 0.2s;
+    
+    &:hover { background: rgba(255,255,255,0.5); }
+    
+    &.selected {
+      background: white;
+      color: var(--blue-600);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+  }
+}
+
+/* ─── Localisation ──────────────────────────────────────────────────── */
+.location-section {
+  background: var(--gray-50);
+  border-radius: 16px;
+  padding: 1.5rem;
+  border: 1px solid var(--gray-200);
+}
+
+.location-status-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.location-badge {
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--gray-200);
+  color: var(--gray-700);
+
+  &.status-gps { background: #dcfce7; color: #166534; }
+  &.status-ip { background: #dbeafe; color: #1e40af; }
+  &.status-detecting { background: #fef9c3; color: #854d0e; }
+  &.status-denied { background: #fee2e2; color: #991b1b; }
+}
+
+.leaflet-map {
+  height: 250px;
+  width: 100%;
+  border-radius: 12px;
+  margin-top: 1rem;
+}
+
+/* ─── Actions ────────────────────────────────────────────────────────── */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2.5rem;
+  border-top: 1px solid var(--gray-100);
+  padding-top: 1.5rem;
+}
+
+.btn-ghost {
+  padding: 0.75rem 1.5rem;
+  background: white;
+  border: 1px solid var(--gray-300);
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-primary {
+  padding: 0.75rem 1.85rem;
+  background: var(--blue-600);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  
+  &:hover { background: var(--blue-700); }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+}
+
+/* Animations */
+.animate-in {
+  animation: slideUp 0.4s cubic-bezier(0, 0, 0.2, 1);
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.loc-spin {
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Global Leaflet Pin Fix */
+:global(.leaflet-custom-pin) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+:global(.pin-pulse) {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  background: color-mix(in srgb, var(--blue-600) 20%, transparent);
+  border-radius: 50%;
+  animation: pulse 2s infinite ease-out;
+}
+@keyframes pulse {
+  0% { transform: scale(0.5); opacity: 0.8; }
+  100% { transform: scale(2); opacity: 0; }
+}

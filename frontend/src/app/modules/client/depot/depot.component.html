@@ -1,0 +1,268 @@
+<div class="client-portal">
+  <div class="portal-noise" aria-hidden="true"></div>
+  <div class="portal-bg-blobs" aria-hidden="true">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+  </div>
+  <header class="client-header">
+    <div class="client-header-inner">
+      <a routerLink="/" class="client-logo">
+        <img src="assets/images/smartbank-logo.png" alt="Smart Bank - Système de gestion des réclamations bancaires" />
+        <span>Espace réclamations clients</span>
+      </a>
+      <nav class="client-nav">
+        <a routerLink="/" routerLinkActive="router-link-active" [routerLinkActiveOptions]="{ exact: true }">Accueil</a>
+        <a routerLink="/depot" routerLinkActive="router-link-active" [routerLinkActiveOptions]="{ exact: true }">Déposer une Réclamation</a>
+        <a routerLink="/suivi" routerLinkActive="router-link-active" [routerLinkActiveOptions]="{ exact: true }">Suivi Réclamation</a>
+        <span class="nav-sep" aria-hidden="true"></span>
+        <a routerLink="/auth/login" class="nav-pro">Connexion</a>
+      </nav>
+    </div>
+  </header>
+  <div class="client-trust">
+    <span class="trust-item">Connexion sécurisée</span>
+    <span class="trust-item">Données confidentielles</span>
+  </div>
+
+  <main class="client-main">
+    <div class="depot-header">
+      <h1>Déposer une réclamation</h1>
+      <p class="subtitle">Signalez un problème lié à votre carte, compte, virement ou autre service. Un numéro de suivi vous sera attribué.</p>
+      <a routerLink="/suivi" class="link-suivi">Vous avez déjà une référence ? <strong>Suivre ma réclamation</strong></a>
+    </div>
+
+    @if (successRef()) {
+      <div class="client-card success-card">
+        <div class="success-icon-wrap"><span class="success-icon">✓</span></div>
+        <h2>Réclamation enregistrée</h2>
+        <p class="success-msg">Votre réclamation a bien été enregistrée. Conservez le numéro de suivi ci-dessous.</p>
+        <div class="ref-block">
+          <span class="ref-label">Numéro de suivi</span>
+          <div class="ref-row">
+            <code class="ref-value">{{ successRef() }}</code>
+            <button type="button" class="client-btn-secondary" (click)="copyReference()">
+              {{ copyDone() ? 'Copié ✓' : 'Copier' }}
+            </button>
+          </div>
+        </div>
+        <p class="ref-hint">Un email de confirmation a été envoyé à l'adresse indiquée. Vous pouvez suivre l'avancement à tout moment avec ce numéro et votre email.</p>
+        <div class="success-actions">
+          <a [routerLink]="['/suivi']" [queryParams]="{ reference: successRef(), email: successEmail() }" class="client-btn-primary">
+            Voir le suivi de ma réclamation
+          </a>
+          <button (click)="resetSelection()" class="client-btn-secondary">Déposer une autre réclamation</button>
+        </div>
+      </div>
+    } @else {
+      @if (step() === 1) {
+        <div class="category-selection fade-in">
+          <h2 class="selection-title">Sélectionnez une catégorie pour commencer</h2>
+          <div class="category-grid">
+            @for (cat of categories; track cat.name) {
+              <button type="button" class="category-card" (click)="selectCategory(cat.name)" [style.--cat-color]="cat.color">
+                <div class="card-icon">
+                  @if (cat.icon === 'credit-card') {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                  } @else if (cat.icon === 'wallet') {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>
+                  } @else if (cat.icon === 'send') {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  } @else if (cat.icon === 'home') {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                  } @else {
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                  }
+                </div>
+                <span class="card-name">{{ cat.name }}</span>
+                <span class="card-arrow">→</span>
+              </button>
+            }
+          </div>
+        </div>
+      } @else {
+        <div class="client-card depot-card fade-in">
+          <div class="form-header-row">
+            <button type="button" class="back-btn" (click)="resetSelection()">← Retour aux catégories</button>
+            <div class="active-category">
+              <span class="cat-label">Catégorie :</span>
+              <span class="cat-value">{{ selectedCategory() }}</span>
+            </div>
+          </div>
+
+          <form [formGroup]="form" (ngSubmit)="submit()">
+            <section class="form-section">
+              <div class="section-head">
+                <span class="section-num">1</span>
+                <h2>Objet de votre réclamation</h2>
+              </div>
+              <div class="field-row">
+                <div class="field grow" [class.error]="isInvalid('title')">
+                  <label>Objet du message <span class="req">*</span></label>
+                  <input formControlName="title" placeholder="Ex. Carte bancaire bloquée sans notification" />
+                  @if (isInvalid('title')) { <span class="err">Objet obligatoire (min. 5 caractères)</span> }
+                </div>
+                <div class="field" [class.error]="isInvalid('complaintTypeId')">
+                  <label>Type de réclamation <span class="req">*</span></label>
+                  <select formControlName="complaintTypeId">
+                    @for (t of filteredComplaintTypes(); track t.id) {
+                      <option [value]="t.id">{{ t.name }}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+
+              <!-- Champs Spécifiques selon la catégorie -->
+              @if (selectedCategory() === 'Carte Bancaire') {
+                <div class="specific-fields card-fields">
+                  <div class="field-row">
+                    <div class="field">
+                      <label>4 derniers chiffres de la carte</label>
+                      <input formControlName="cardLastFour" type="text" maxlength="4" placeholder="XXXX" />
+                    </div>
+                    <div class="field">
+                      <label>Date de l'incident</label>
+                      <input formControlName="incidentDate" type="date" />
+                    </div>
+                  </div>
+                </div>
+              } @else if (selectedCategory() === 'Compte Bancaire') {
+                <div class="specific-fields account-fields">
+                  <div class="field-row">
+                    <div class="field">
+                      <label>Type de compte</label>
+                      <select formControlName="accountType">
+                        <option value="Compte Courant">Compte Courant</option>
+                        <option value="Compte Épargne">Compte Épargne</option>
+                        <option value="Compte Devise">Compte Devise</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label>Montant concerné (TND)</label>
+                      <input formControlName="amount" type="number" step="0.001" placeholder="0.000" />
+                    </div>
+                  </div>
+                </div>
+              } @else if (selectedCategory() === 'Virement') {
+                <div class="specific-fields virement-fields">
+                  <div class="field-row">
+                    <div class="field">
+                      <label>Référence du virement</label>
+                      <input formControlName="virementReference" placeholder="Ex: VIR-XXXXX" />
+                    </div>
+                    <div class="field">
+                      <label>Montant (TND)</label>
+                      <input formControlName="amount" type="number" step="0.001" placeholder="0.000" />
+                    </div>
+                    <div class="field">
+                      <label>Date du virement</label>
+                      <input formControlName="incidentDate" type="date" />
+                    </div>
+                  </div>
+                </div>
+              } @else if (selectedCategory() === 'Crédit & Prêts') {
+                <div class="specific-fields credit-fields">
+                  <div class="field-row">
+                    <div class="field">
+                      <label>Type de crédit</label>
+                      <select formControlName="creditType">
+                        <option value="Prêt Immobilier">Prêt Immobilier</option>
+                        <option value="Prêt Consommation">Prêt Consommation</option>
+                        <option value="Crédit Auto">Crédit Auto</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label>Numéro de dossier</label>
+                      <input formControlName="dossierNumber" placeholder="Ex: CRD-2024-001" />
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <div class="field-row mt-3">
+                <div class="field">
+                  <label>Canal de survenance <span class="req">*</span></label>
+                  <select formControlName="channel">
+                    @for (c of channels; track c) {
+                      <option [value]="c">{{ c }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Priorité perçue</label>
+                  <select formControlName="priority">
+                    @for (p of priorityOptions; track p.value) {
+                      <option [value]="p.value">{{ p.label }}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+
+              <div class="field full mt-3" [class.error]="isInvalid('description')">
+                <label>Description détaillée <span class="req">*</span></label>
+                <textarea formControlName="description" rows="4" placeholder="Décrivez la situation..."></textarea>
+                @if (isInvalid('description')) { <span class="err">Description obligatoire (min. 20 caractères)</span> }
+              </div>
+            </section>
+
+            <section class="form-section">
+              <div class="section-head">
+                <span class="section-num">2</span>
+                <h2>Informations d'identification</h2>
+              </div>
+              <div class="field-row">
+                <div class="field grow" [class.error]="isInvalid('clientName')">
+                  <label>Nom et prénom <span class="req">*</span></label>
+                  <input formControlName="clientName" placeholder="Ex. Mohamed Ali" [attr.readonly]="auth.isAuthenticated() ? true : null" />
+                </div>
+                <div class="field grow" [class.error]="isInvalid('clientEmail')">
+                  <label>Adresse email <span class="req">*</span></label>
+                  <input formControlName="clientEmail" type="email" placeholder="votre@email.com" [attr.readonly]="auth.isAuthenticated() ? true : null" />
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label>Téléphone</label>
+                  <input formControlName="clientPhone" placeholder="+216 XX XXX XXX" />
+                </div>
+                <div class="field" [class.error]="isInvalid('clientGovernorate')">
+                  <label>Gouvernorat <span class="req">*</span></label>
+                  <select formControlName="clientGovernorate">
+                    <option value="">-- Sélectionnez --</option>
+                    @for (g of governorates; track g) {
+                      <option [value]="g">{{ g }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="field grow">
+                  <label>Numéro de compte (Optionnel)</label>
+                  <input formControlName="clientAccountNumber" placeholder="Si concerné" />
+                </div>
+              </div>
+            </section>
+
+            @if (error()) {
+              <div class="client-form-error">⚠️ {{ error() }}</div>
+            }
+
+            <div class="form-actions">
+              <button type="button" class="client-btn-secondary" (click)="resetSelection()" [disabled]="loading()">
+                Annuler
+              </button>
+              <button type="submit" class="client-btn-primary" [disabled]="form.invalid || loading()">
+                @if (loading()) { <span class="spin"></span> }
+                Soumettre ma réclamation
+              </button>
+            </div>
+          </form>
+        </div>
+      }
+    }
+  </main>
+
+  <footer class="client-footer">
+    <div class="client-footer-inner">
+      <span>© SmartBank — Espace réclamations clients</span>
+      <span><a routerLink="/auth/login">Espace professionnel</a></span>
+    </div>
+  </footer>
+</div>

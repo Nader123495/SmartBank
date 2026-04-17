@@ -1,0 +1,275 @@
+<!-- Aligné Figma: ph, kpi-grid, kpi, charts-row, chart-card, bar-list, donut-row-item, trend-wrap -->
+<div class="ph">
+  <div>
+    <h1>Tableau de Bord</h1>
+    <p>Vue d'ensemble des réclamations STB Bank — Mise à jour en temps réel</p>
+  </div>
+  <div class="ph-actions">
+    <button type="button" class="btn btn-secondary btn-sm" (click)="aiContext.openPanel('trends')">📊 Analyser avec IA</button>
+    <a routerLink="/complaints/new" class="btn btn-primary btn-sm">+ Nouvelle Réclamation</a>
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="kpi-grid">
+    @for (i of [1,2,3,4,5,6]; track i) {
+      <div class="kpi" style="opacity: 0.7"><span class="kpi-ico">📋</span><div><div class="kpi-val">—</div><div class="kpi-lbl">Chargement...</div></div></div>
+    }
+  </div>
+}
+
+@if (error()) {
+  <div class="dashboard-error">
+    <p>{{ error() }}</p>
+    <button type="button" class="btn btn-primary" (click)="loadStats()">Réessayer</button>
+  </div>
+}
+
+@if (stats() && !loading() && !error()) {
+  <div class="kpi-grid">
+    <div class="kpi">
+      <span class="kpi-ico">📋</span>
+      <div>
+        <div class="kpi-val">{{ stats()!.totalComplaints }}</div>
+        <div class="kpi-lbl">Total Réclamations</div>
+        <div class="kpi-trend up">▲ Ce mois</div>
+      </div>
+    </div>
+    <div class="kpi k-new">
+      <span class="kpi-ico">🆕</span>
+      <div>
+        <div class="kpi-val">{{ stats()!.newComplaints }}</div>
+        <div class="kpi-lbl">Nouvelles</div>
+        <div class="kpi-trend up">▲ Aujourd'hui</div>
+      </div>
+    </div>
+    <div class="kpi k-prog">
+      <span class="kpi-ico">⚙️</span>
+      <div>
+        <div class="kpi-val">{{ stats()!.inProgressComplaints }}</div>
+        <div class="kpi-lbl">En Cours</div>
+        <div class="kpi-trend">En cours</div>
+      </div>
+    </div>
+    <div class="kpi k-done">
+      <span class="kpi-ico">✅</span>
+      <div>
+        <div class="kpi-val">{{ stats()!.closedToday }}</div>
+        <div class="kpi-lbl">Clôturées Aujourd'hui</div>
+        <div class="kpi-trend up">▲</div>
+      </div>
+    </div>
+    <div class="kpi k-esc">
+      <span class="kpi-ico">🚨</span>
+      <div>
+        <div class="kpi-val">{{ stats()!.escalatedComplaints }}</div>
+        <div class="kpi-lbl">Escaladées</div>
+        <div class="kpi-trend down">Urgent</div>
+      </div>
+    </div>
+    <div class="kpi k-sla">
+      <span class="kpi-ico">⏱️</span>
+      <div>
+        <div class="kpi-val">{{ slaPercent }}%</div>
+        <div class="kpi-lbl">Respect SLA</div>
+        <div class="kpi-trend" [class.up]="slaPercent >= 80" [class.down]="slaPercent < 80">{{ slaPercent >= 80 ? '▲' : '▼' }} Ce mois</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pie chart analyse (dynamique) — style donut amélioré -->
+  <div class="chart-card pie-chart-card">
+    <div class="pie-chart-header">
+      <h3>🥧 Analyse — {{ pieChartTitle }}</h3>
+      <div class="pie-chart-tabs">
+        @for (opt of pieChartOptions; track opt.value) {
+          <button
+            type="button"
+            class="pie-tab"
+            [class.active]="pieChartDimension() === opt.value"
+            (click)="setPieChartDimension(opt.value)">
+            {{ opt.label }}
+          </button>
+        }
+      </div>
+    </div>
+    <div class="pie-chart-wrap">
+      <div class="pie-donut-outer" [style.background]="'conic-gradient(' + pieChartConicGradientWithGaps + ')'">
+        <div class="pie-donut-hole">
+          <span class="pie-donut-total">{{ pieChartTotal }}</span>
+          <span class="pie-donut-label">total</span>
+        </div>
+      </div>
+      <div class="pie-chart-legend">
+        @for (seg of pieChartSegments; track seg.label) {
+          <div class="pie-legend-item" [title]="seg.label + ' : ' + seg.count + ' (' + (pieChartTotal ? ((seg.count / pieChartTotal) * 100).toFixed(1) : 0) + '%)'">
+            <span class="pie-legend-dot" [style.background]="seg.color"></span>
+            <span class="pie-legend-label">{{ seg.label }}</span>
+            <span class="pie-legend-value">{{ seg.count }} <span class="pie-legend-pct">({{ pieChartTotal ? ((seg.count / pieChartTotal) * 100).toFixed(1) : 0 }}%)</span></span>
+          </div>
+        }
+        @if (pieChartSegments.length === 0) {
+          <p class="pie-no-data">Aucune donnée à afficher pour cette vue</p>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>📊 Par Statut</h3>
+      <div class="bar-list">
+        @for (item of stats()!.byStatus; track item.status) {
+          <div class="bar-row">
+            <span class="bar-lbl">{{ item.status }}</span>
+            <div class="bar-track">
+              <div class="bar-fill"
+                [style.width.%]="stats()!.totalComplaints ? (item.count / stats()!.totalComplaints) * 100 : 0"
+                [style.background]="statusColor(item.status)">
+              </div>
+            </div>
+            <span class="bar-num">{{ item.count }}</span>
+          </div>
+        }
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>🏷️ Par Type</h3>
+      @for (item of stats()!.byType; track item.type) {
+        <div class="donut-row-item">
+          <div class="donut-color" [style.background]="statusColor(item.type) || '#1a56db'"></div>
+          <span class="donut-label">{{ item.type }}</span>
+          <span class="donut-pct">{{ item.count }} ({{ stats()!.totalComplaints ? ((item.count / stats()!.totalComplaints) * 100).toFixed(0) : 0 }}%)</span>
+        </div>
+      }
+      <div style="margin-top: 0.9rem; background: var(--gray-50); border-radius: var(--radius); padding: 0.55rem 0.75rem; display: flex; justify-content: space-between; font-size: 0.78rem">
+        <span style="color: var(--gray-500)">Taux résolution</span>
+        <span style="font-weight: 700; color: var(--green)">{{ slaPercent }}%</span>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>🎯 Par Priorité</h3>
+      <div style="display: flex; flex-direction: column; gap: 0.75rem">
+        @for (item of stats()!.byPriority; track item.priority) {
+          <div style="display: flex; align-items: center; gap: 0.75rem">
+            <span class="badge" [ngClass]="{
+              'badge-critique': item.priority === 'Critique',
+              'badge-haute': item.priority === 'Haute',
+              'badge-moyenne': item.priority === 'Moyenne',
+              'badge-faible': item.priority === 'Faible'
+            }" style="min-width: 65px; justify-content: center">{{ item.priority }}</span>
+            <div style="flex: 1; background: var(--gray-100); border-radius: 3px; height: 8px; overflow: hidden">
+              <div [style.width.%]="stats()!.totalComplaints ? (item.count / stats()!.totalComplaints) * 100 : 0"
+                style="height: 8px; border-radius: 3px"
+                [style.background]="priorityColor(item.priority)">
+              </div>
+            </div>
+            <span style="font-weight: 700; font-size: 0.82rem">{{ item.count }}</span>
+          </div>
+        }
+      </div>
+      @if (hasCriticalPriority()) {
+        <div class="alert-banner warn" style="margin-top: 1rem">
+          <span>🚨</span>
+          <span><strong>Réclamations critiques</strong> nécessitent une action immédiate</span>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Carte Tunisie — Leaflet + GeoJSON choroplèthe -->
+  <div class="chart-card tunisia-map-card">
+    <h3>🇹🇳 Couverture géographique — Tunisie</h3>
+    <p class="map-subtitle">Réclamations par implantation sur le territoire tunisien</p>
+    <div class="tunisia-map-wrap">
+      <app-tunisia-map [complaintData]="tunisiaMapComplaintData" />
+      <div class="tunisia-agencies">
+        <h4>Réclamations par agence</h4>
+        @if (stats()!.byAgency?.length) {
+          <ul class="agency-list">
+            @for (a of stats()!.byAgency; track a.agency) {
+              <li>
+                <span class="agency-name">{{ a.agency || 'Non affecté' }}</span>
+                <span class="agency-count">{{ a.count }}</span>
+              </li>
+            }
+          </ul>
+        } @else {
+          <div class="map-empty-state">
+            <p class="map-no-data">Aucune réclamation n’est encore associée à une agence.</p>
+            <p class="map-empty-hint">Les chiffres par agence s’afficheront ici dès que des réclamations seront rattachées à des implantations (menu Administration → Agences).</p>
+            <div class="map-regions-info">
+              <span class="map-regions-title">Couverture :</span>
+              <span>Grand Tunis, Nord, Cap Bon, Sahel, Centre, Sud</span>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1.6fr 1fr; gap: 0.85rem; margin-bottom: 0.85rem">
+    <div class="chart-card">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem">
+        <h3 style="margin: 0">📈 Tendance 14 jours</h3>
+        <div class="legend">
+          <span><span class="legend-dot" style="background: var(--blue-600)"></span>Créées</span>
+          <span><span class="legend-dot" style="background: var(--green-mid)"></span>Clôturées</span>
+        </div>
+      </div>
+      <div class="trend-wrap">
+        @for (day of stats()!.dailyTrend; track day.date) {
+          <div class="trend-col">
+            <div class="trend-bars">
+              <div class="t-bar t-created"
+                [style.height.px]="getMaxTrend() ? (day.created / getMaxTrend()) * 70 : 0">
+              </div>
+              <div class="t-bar t-closed"
+                [style.height.px]="getMaxTrend() ? (day.closed / getMaxTrend()) * 70 : 0">
+              </div>
+            </div>
+            <span class="trend-date">{{ day.date | date:'dd/MM' }}</span>
+          </div>
+        }
+      </div>
+    </div>
+    @if (auth.isResponsable() && stats()!.agentPerformance?.length) {
+      <div class="chart-card">
+        <h3>👥 Performance Agents</h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.78rem">
+          <thead>
+            <tr>
+              <th style="padding: 0.4rem 0.5rem; text-align: left; color: var(--gray-400); font-size: 0.68rem; text-transform: uppercase; border-bottom: 1px solid var(--gray-200)">Agent</th>
+              <th style="padding: 0.4rem 0.5rem; text-align: center; color: var(--gray-400); font-size: 0.68rem; text-transform: uppercase; border-bottom: 1px solid var(--gray-200)">Assignées</th>
+              <th style="padding: 0.4rem 0.5rem; text-align: center; color: var(--gray-400); font-size: 0.68rem; text-transform: uppercase; border-bottom: 1px solid var(--gray-200)">Clôt.</th>
+              <th style="padding: 0.4rem 0.5rem; text-align: center; color: var(--gray-400); font-size: 0.68rem; text-transform: uppercase; border-bottom: 1px solid var(--gray-200)">SLA</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (agent of stats()!.agentPerformance; track agent.agentName) {
+              <tr>
+                <td style="padding: 0.5rem">{{ agent.agentName }}</td>
+                <td style="text-align: center; padding: 0.5rem; font-weight: 700">{{ agent.totalAssigned }}</td>
+                <td style="text-align: center; padding: 0.5rem; font-weight: 700">{{ agent.totalClosed }}</td>
+                <td style="text-align: center; padding: 0.5rem">
+                  <span [style.background]="agent.slaRate >= 0.8 ? 'var(--green-light)' : (agent.slaRate >= 0.6 ? 'var(--orange-light)' : 'var(--red-light)')"
+                    [style.color]="agent.slaRate >= 0.8 ? 'var(--green)' : (agent.slaRate >= 0.6 ? 'var(--orange)' : 'var(--red)')"
+                    style="padding: 0.15rem 0.45rem; border-radius: 4px; font-weight: 700; font-size: 0.72rem">
+                    {{ (agent.slaRate * 100).toFixed(0) }}%
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+}
+
+@if (!loading() && !stats() && !error()) {
+  <div class="dashboard-empty">
+    <p>Aucune donnée disponible.</p>
+    <button type="button" class="btn btn-primary" (click)="loadStats()">Actualiser</button>
+  </div>
+}

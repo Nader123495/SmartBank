@@ -1,0 +1,196 @@
+<div class="landing">
+  <!-- Header Flottant -->
+  <header class="landing-header floating-header">
+    <div class="landing-header-inner">
+      <a routerLink="/" class="landing-logo">
+        <img src="assets/images/stb-horizontal.png" alt="STB Bank" class="logo-img" />
+      </a>
+      <nav class="landing-nav">
+        <div class="nav-links">
+          <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Accueil</a>
+          <a routerLink="/depot" routerLinkActive="active">Dépôt</a>
+          <a routerLink="/suivi" routerLinkActive="active">Suivi</a>
+          <a href="#faq" class="nav-link-sub">FAQ</a>
+        </div>
+        <div class="nav-actions">
+          @if (auth.isAuthenticated()) {
+            <a [routerLink]="auth.isClient() ? '/client/dashboard' : '/dashboard'" class="btn-portal">Mon Espace</a>
+          } @else {
+            <a routerLink="/auth/login" class="link-login">Connexion</a>
+            <a routerLink="/auth/signup" class="btn-signup">Ouvrir un compte</a>
+          }
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Premium -->
+  <section class="landing-hero pro-hero">
+    <div class="hero-bg" [style.background-image]="heroBgImage"></div>
+    <div class="hero-glow" aria-hidden="true"></div>
+    <div class="hero-inner">
+      <div class="hero-content">
+        <div class="hero-badge">Plateforme Officielle STB</div>
+        <h1>Simplifiez vos <span>réclamations</span> bancaires</h1>
+        <p class="hero-description">Une interface moderne et sécurisée pour gérer vos demandes en toute transparence. Suivi en temps réel et réponse garantie.</p>
+        <div class="hero-cta">
+          <a routerLink="/depot" class="btn-hero-main">Déposer un dossier</a>
+          <a routerLink="/suivi" class="btn-hero-ghost">Suivre mon statut</a>
+        </div>
+        <p class="hero-security-note">🔒 Connexion client requise pour le dépôt et le suivi sécurisés.</p>
+      </div>
+      <div class="hero-visual-wrapper">
+        <div class="floating-dashboard">
+          <div class="dash-card card-1">
+            <div class="dash-header"></div>
+            <div class="dash-lines"></div>
+          </div>
+          <div class="dash-card card-2">
+            <div class="dash-circle"></div>
+            <div class="dash-text"></div>
+          </div>
+          <div class="premium-stb-card">
+            <div class="chip"></div>
+            <div class="logo-mini">STB</div>
+            <div class="number">•••• •••• •••• 1924</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trust Bar -->
+    <div class="trust-bar">
+      <div class="inner">
+        <span class="trust-label">Certifié par</span>
+        <div class="trust-logos">
+          <div class="trust-item"><span class="t-ico">🛡️</span><span>SSL 256bits</span></div>
+          <div class="trust-item"><span class="t-ico">🏛️</span><span>BCT Regulated</span></div>
+          <div class="trust-item"><span class="t-ico">🔐</span><span>RGPD Compliant</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- No slant here for full image visibility -->
+  </section>
+
+  <!-- Types de Réclamations -->
+  <section class="landing-section types-section">
+    <div class="noise-overlay" aria-hidden="true"></div>
+    <div class="types-bg-decorations" aria-hidden="true">
+      <div class="blob blob-1"></div>
+      <div class="blob blob-2"></div>
+      <div class="blob blob-3"></div>
+      <div class="blob blob-4"></div>
+    </div>
+    <div class="section-inner">
+      <div class="section-header">
+        <span class="section-tag">Solutions</span>
+        <h2>Types de Réclamations</h2>
+        <p>Sélectionnez une catégorie pour démarrer votre demande</p>
+      </div>
+      <div class="types-grid">
+        @for (t of complaintTypes; track t.id) {
+          <a routerLink="/depot" [queryParams]="{ typeId: t.id }" class="type-card" [attr.aria-label]="t.name">
+            <div class="type-card-inner">
+              <div class="type-card-icon" [ngClass]="'type-' + t.type">
+                @if (t.type === 'card') {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                } @else if (t.type === 'account') {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"></path><path d="M3 10h18"></path><path d="M5 10v11"></path><path d="M19 10v11"></path><path d="M10 10v11"></path><path d="M14 10v11"></path><path d="M2 10l10-8 10 8"></path></svg>
+                } @else if (t.type === 'transfer') {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+                } @else if (t.type === 'loan') {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                } @else {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+                }
+              </div>
+              <span class="type-name">{{ t.name }}</span>
+              <div class="type-card-arrow">Déposer (authentification requise) →</div>
+            </div>
+          </a>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Comment ça marche -->
+  <section class="landing-section steps-section">
+    <div class="section-inner">
+      <div class="section-header">
+        <span class="section-tag">Processus</span>
+        <h2>Comment Ça Marche ?</h2>
+      </div>
+      <div class="steps-row">
+        <div class="steps-connector"></div>
+        @for (s of steps; track s.num) {
+          <div class="step-item" [ngClass]="'step-' + s.num">
+            <div class="step-visual">
+              <div class="step-num">{{ s.num }}</div>
+              <div class="step-icon-wrap">
+                @if (s.num === 1) {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                } @else if (s.num === 2) {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                } @else if (s.num === 3) {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                } @else {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                }
+              </div>
+            </div>
+            <div class="step-content">
+              <span class="step-title">{{ s.title }}</span>
+              <span class="step-desc">{{ s.desc }}</span>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ (ancrage) -->
+  <section id="faq" class="landing-section faq-section">
+    <div class="section-inner narrow">
+      <h2>FAQ</h2>
+      <div class="faq-list">
+        <div class="faq-item">
+          <h3>Comment déposer une réclamation ?</h3>
+          <p>Rendez-vous sur <a routerLink="/depot">Déposer une réclamation</a>, remplissez le formulaire avec les informations demandées. Vous recevrez un numéro de suivi par email.</p>
+        </div>
+        <div class="faq-item">
+          <h3>Comment suivre ma réclamation ?</h3>
+          <p>Utilisez la page <a routerLink="/suivi">Suivi Réclamation</a> avec votre numéro de suivi et l’email utilisé lors du dépôt.</p>
+        </div>
+        <div class="faq-item">
+          <h3>Quel est le délai de traitement ?</h3>
+          <p>Le délai indicatif est de 48 à 72 h ouvrées selon le type et la priorité de votre réclamation.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Support Client + Footer -->
+  <section id="contact" class="landing-section support-section">
+    <div class="section-inner support-inner">
+      <div class="support-box">
+        <h2>Support Client STB</h2>
+        <p class="support-line">
+          <span class="support-ico">📞</span>
+          Call Center <a [href]="'tel:' + supportPhone">{{ supportPhone }}</a>
+        </p>
+        <p class="support-line">
+          <span class="support-ico">✉️</span>
+          Email: <a [href]="'mailto:' + supportEmail">{{ supportEmail }}</a>
+        </p>
+        <a routerLink="/auth/login" class="btn-chat">
+          <span class="btn-ico">💬</span>
+          Chat en Ligne
+        </a>
+      </div>
+      <footer class="landing-footer">
+        <p>© {{ currentYear }} STB — Société Tunisienne de Banque. Plateforme de réclamations.</p>
+      </footer>
+    </div>
+  </section>
+</div>

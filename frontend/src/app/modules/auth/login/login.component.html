@@ -1,0 +1,130 @@
+<div class="auth-page auth-modern-page">
+  <div class="auth-modern-bg" aria-hidden="true"></div>
+
+  <header class="auth-modern-header">
+    <a routerLink="/" class="auth-modern-logo">
+      <img src="assets/images/smartbank-logo.png" alt="STB Bank" />
+      <span class="auth-modern-subtitle">Société Tunisienne de Banque</span>
+    </a>
+  </header>
+
+  <main class="auth-modern-main">
+    <div class="auth-modern-card-wrap">
+    <div class="auth-modern-card">
+      <h1 class="auth-modern-card-title">Connexion à votre Espace Réclamation</h1>
+
+      @if (error()) {
+        <div class="auth-modern-alert error">{{ error() }}</div>
+      }
+
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <div class="auth-modern-field">
+          <label>Adresse Email</label>
+          <input
+            type="email"
+            formControlName="email"
+            placeholder="votre@email.com"
+            autocomplete="email"
+            class="auth-modern-input"
+          />
+          @if (form.get('email')?.hasError('email') && form.get('email')?.touched) {
+            <span class="auth-modern-field-err">Email invalide</span>
+          }
+        </div>
+        <div class="auth-modern-field">
+          <label>Mot de Passe</label>
+          <div class="auth-modern-input-wrap">
+            <input
+              [type]="showPass() ? 'text' : 'password'"
+              formControlName="password"
+              placeholder="••••••••"
+              autocomplete="current-password"
+              class="auth-modern-input"
+            />
+            <button type="button" class="auth-modern-eye" (click)="showPass.set(!showPass())" [attr.aria-label]="showPass() ? 'Masquer le mot de passe' : 'Afficher le mot de passe'">
+              @if (showPass()) {
+                <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              } @else {
+                <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              }
+            </button>
+          </div>
+          <a routerLink="/auth/forgot-password" class="auth-modern-forgot">Mot de passe oublié ?</a>
+        </div>
+        @if (recaptchaSiteKey()) {
+          <div class="auth-recaptcha-wrap">
+            <div id="recaptcha-login-container"></div>
+          </div>
+        }
+        <button type="submit" class="auth-modern-btn" [disabled]="form.invalid || loading()">
+          @if (loading()) {
+            <span class="auth-modern-spin"></span> Connexion...
+          } @else {
+            Se Connecter
+          }
+        </button>
+      </form>
+
+      <p class="auth-modern-switch">
+        Vous n'avez pas de compte ? <a routerLink="/auth/signup">Créer un compte</a>
+      </p>
+
+      @if (!demoUnlocked()) {
+        @if (!showDemoCodeInput()) {
+          <button type="button" class="auth-modern-demo-reveal" (click)="toggleDemoCodeInput()">
+            Comptes démo (code requis)
+          </button>
+        } @else {
+          <div class="auth-modern-demo-code">
+            <input type="password" class="auth-modern-input" [(ngModel)]="demoCode" [ngModelOptions]="{standalone: true}" placeholder="Code" (keydown.enter)="checkDemoCode()" />
+            <button type="button" class="auth-modern-btn secondary" (click)="checkDemoCode()">Valider</button>
+            <button type="button" class="auth-modern-link-btn" (click)="toggleDemoCodeInput()">Annuler</button>
+          </div>
+        }
+      } @else {
+        <div class="auth-modern-demo-list">
+          <button type="button" class="auth-modern-demo-item" (click)="fillLogin('admin@stb.tn','Admin@2025')">Admin</button>
+          <button type="button" class="auth-modern-demo-item" (click)="fillLogin('responsable@stb.tn','Admin@2025')">Responsable</button>
+          <button type="button" class="auth-modern-demo-item" (click)="fillLogin('agent1@stb.tn','Admin@2025')">Agent</button>
+        </div>
+      }
+    </div>
+    </div>
+  </main>
+
+  <div class="auth-modern-bottom">
+    <aside class="auth-support-box">
+      <h2 class="auth-support-title">Support Client STB</h2>
+      <div class="auth-support-line">📞 Call Center <strong>71 110 000</strong></div>
+      <div class="auth-support-line">✉️ Email: <strong>support&#64;stb.com.tn</strong></div>
+      <a href="#" class="auth-support-btn" (click)="$event.preventDefault()">Chat en Ligne</a>
+    </aside>
+  </div>
+
+  <footer class="auth-modern-footer">
+    <span class="auth-modern-feat">
+      <span class="auth-modern-feat-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </span>
+      Sécurisé
+    </span>
+    <span class="auth-modern-feat">
+      <span class="auth-modern-feat-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </span>
+      Rapide
+    </span>
+    <span class="auth-modern-feat">
+      <span class="auth-modern-feat-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      </span>
+      Suivi en Temps Réel
+    </span>
+    <span class="auth-modern-feat">
+      <span class="auth-modern-feat-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+      </span>
+      Support 24/7
+    </span>
+  </footer>
+</div>

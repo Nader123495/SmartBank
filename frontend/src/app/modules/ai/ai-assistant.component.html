@@ -1,0 +1,49 @@
+@if (open()) {
+  <div class="ai-panel">
+    <div class="ai-header">
+      <span>Assistant IA SmartBank</span>
+      <button type="button" class="ai-close" (click)="close()" aria-label="Fermer">×</button>
+    </div>
+    <p class="ai-scope-hint">Répond uniquement aux questions sur la plateforme et les réclamations bancaires.</p>
+    <div class="ai-body">
+      @for (m of messages(); track $index) {
+        <div class="ai-msg" [class.user]="m.role === 'user'">
+          {{ m.content }}
+        </div>
+      }
+      @if (loading()) {
+        <div class="ai-msg assistant">Réflexion…</div>
+      }
+      @if (error()) {
+        <div class="ai-error">{{ error() }}</div>
+      }
+    </div>
+    <div class="ai-footer">
+      @if (attachment(); as att) {
+        <div class="ai-attachment">
+          <span class="ai-attachment-name" title="{{ att.fileName }}">{{ att.fileName }}</span>
+          <button type="button" class="ai-attachment-remove" (click)="removeAttachment()" aria-label="Retirer la pièce jointe">×</button>
+        </div>
+      }
+      <div class="ai-footer-row">
+        <input
+          #fileInput
+          type="file"
+          class="ai-file-input"
+          [accept]="acceptTypes"
+          (change)="onFileSelected($event)"
+        />
+        <input
+          type="text"
+          class="ai-input"
+          placeholder="Votre message ou joignez une photo/PDF…"
+          [ngModel]="message()"
+          (ngModelChange)="message.set($event)"
+          (keydown.enter)="send()"
+        />
+        <button type="button" class="ai-btn-attach" (click)="fileInput.click()" aria-label="Joindre un fichier">📎</button>
+        <button type="button" class="ai-send" (click)="send()">Envoyer</button>
+      </div>
+    </div>
+  </div>
+}

@@ -1,0 +1,294 @@
+{
+  "name": "SmartBank - Workflow 2: Surveillance SLA & Escalade Automatique",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 * * * *"
+            }
+          ]
+        }
+      },
+      "id": "b2c3d4e5-0002-0002-0002-000000000001",
+      "name": "Planificateur - Chaque Heure",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  c.Id AS complaintId,\n  c.Reference AS RefReclamation,\n  ct.Name AS Type,\n  c.Priority AS Priorite,\n  c.Status AS Statut,\n  c.AssignedToUserId AS AgentAssigneId,\n  c.AgencyId AS AgenceId,\n  c.Description,\n  c.CreatedAt AS DateCreation,\n  1 AS slaId,\n  48 AS SlaHeures,\n  c.CreatedAt AS slaDebut,\n  c.SLADeadline AS slaDue,\n  DATEDIFF(MINUTE, GETUTCDATE(), c.SLADeadline) AS minutesRestantes,\n  DATEDIFF(HOUR, c.SLADeadline, GETUTCDATE()) AS heuresDeRetard,\n  u.LastName AS agentNom,\n  u.FirstName AS agentPrenom,\n  u.Email AS agentEmail,\n  a.Name AS agenceNom\nFROM Complaints c\nLEFT JOIN ComplaintTypes ct ON ct.Id = c.ComplaintTypeId\nLEFT JOIN Users u ON u.Id = c.AssignedToUserId\nLEFT JOIN Agencies a ON a.Id = c.AgencyId\nWHERE c.Status NOT IN ('Clôturée', 'Rejetée', 'Closed', 'Rejected')\n  AND c.SLADeadline IS NOT NULL\n  AND c.SLADeadline < DATEADD(HOUR, 2, GETUTCDATE())\nORDER BY c.SLADeadline ASC",
+        "options": {}
+      },
+      "id": "b2c3d4e5-0002-0002-0002-000000000002",
+      "name": "Réclamations SLA Critiques",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        480,
+        400
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "q3VHaPxFiPyITDZ8",
+          "name": "SmartBank SQL Server PERFECT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond1",
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0002-0002-0002-000000000003",
+      "name": "Réclamations Trouvées ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Catégoriser chaque réclamation selon son niveau d'escalade\nconst items = $input.all();\nconst maintenant = new Date();\n\nreturn items.map(item => {\n  const c = item.json;\n  const minutesRestantes = c.minutesRestantes;\n  const heuresDeRetard = c.heuresDeRetard;\n  \n  let niveauEscalade = 'Normal';\n  let actionRequise = '';\n  let destinataireRole = '';\n  let couleurAlerte = '#27ae60';\n\n  if (heuresDeRetard > 0) {\n    // SLA DÉPASSÉ\n    if (heuresDeRetard >= 24) {\n      niveauEscalade = 'CRITIQUE';\n      actionRequise = 'Escalade Direction Générale';\n      destinataireRole = 'Directeur';\n      couleurAlerte = '#8e1a1a';\n    } else if (heuresDeRetard >= 8) {\n      niveauEscalade = 'ROUGE';\n      actionRequise = 'Escalade Responsable Département';\n      destinataireRole = 'ResponsableDept';\n      couleurAlerte = '#c0392b';\n    } else {\n      niveauEscalade = 'ORANGE';\n      actionRequise = 'Escalade Responsable Agence';\n      destinataireRole = 'ResponsableAgence';\n      couleurAlerte = '#e67e22';\n    }\n  } else if (minutesRestantes <= 60) {\n    // IMMINENCE SLA (moins de 1h restante)\n    niveauEscalade = 'AVERTISSEMENT';\n    actionRequise = 'Alerte Agent - SLA Imminent';\n    destinataireRole = 'Agent';\n    couleurAlerte = '#f39c12';\n  }\n\n  return {\n    json: {\n      ...c,\n      niveauEscalade,\n      actionRequise,\n      destinataireRole,\n      couleurAlerte,\n      timestampVerification: maintenant.toISOString(),\n      estEnRetard: heuresDeRetard > 0\n    }\n  };\n}).filter(item => item.json.niveauEscalade !== 'Normal');"
+      },
+      "id": "b2c3d4e5-0002-0002-0002-000000000004",
+      "name": "Analyser Niveau d'Escalade",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- 1. Mettre à jour l'escalade\nUPDATE Complaints\nSET IsEscalated = 1,\n    EscalatedAt = '{{ $json.timestampVerification }}'\nWHERE Id = {{ $json.complaintId }};\n\n-- 2. Mettre à jour le statut du complaint si en retard critique\n{{ $json.niveauEscalade === 'CRITIQUE' || $json.niveauEscalade === 'ROUGE' ? \n  `UPDATE Complaints SET Status = 'Escaladée' WHERE Id = ${$json.complaintId} AND Status NOT IN ('Clôturée', 'Rejetée', 'Closed', 'Rejected');` : '' }}\n\n-- 3. Logger l'escalade dans AuditLogs\nINSERT INTO AuditLogs (Action, Entity, EntityId, UserId, CreatedAt, NewValues)\nVALUES (\n  'SLA_ESCALADE',\n  'Complaints',\n  {{ $json.complaintId }},\n  NULL,\n  '{{ $json.timestampVerification }}',\n  '{\"Level\": \"{{ $json.niveauEscalade }}\", \"Delay\": \"{{ $json.heuresDeRetard }}h\", \"Action\": \"{{ $json.actionRequise }}\"}'\n);\n\n-- 4. Retourner l'objet complet pour le bloc suivant\nSELECT \n  c.Id AS complaintId,\n  c.Reference AS RefReclamation,\n  ct.Name AS Type,\n  c.Priority AS Priorite,\n  c.AgencyId,\n  a.Name AS agenceNom,\n  u.FirstName AS agentPrenom,\n  u.LastName AS agentNom,\n  '{{ $json.niveauEscalade }}' as niveauEscalade,\n  '{{ $json.actionRequise }}' as actionRequise,\n  '{{ $json.couleurAlerte }}' as couleurAlerte,\n  '{{ $json.heuresDeRetard }}' as heuresDeRetard,\n  '{{ $json.timestampVerification }}' as timestampVerification,\n  '{{ $json.slaDue }}' as slaDue\nFROM Complaints c\nLEFT JOIN ComplaintTypes ct ON ct.Id = c.ComplaintTypeId\nLEFT JOIN Agencies a ON a.Id = c.AgencyId\nLEFT JOIN Users u ON u.Id = c.AssignedToUserId\nWHERE c.Id = {{ $json.complaintId }};",
+        "options": {}
+      },
+      "id": "b2c3d4e5-0002-0002-0002-000000000006",
+      "name": "Mettre à Jour Escalade BDD",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        400
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "q3VHaPxFiPyITDZ8",
+          "name": "SmartBank SQL Server PERFECT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  u.Id,\n  u.LastName AS Nom,\n  u.FirstName AS Prenom,\n  u.Email,\n  r.Name AS roleNom,\n  u.AgencyId\nFROM Users u\nINNER JOIN Roles r ON r.Id = u.RoleId\nWHERE r.Name IN ('Responsable', 'Admin', 'ResponsableAgence', 'ResponsableDept', 'Directeur')\n  AND u.IsActive = 1\n  AND (u.AgencyId = {{ $json.AgencyId }} OR r.Name IN ('Admin', 'Directeur'))\nORDER BY \n  CASE r.Name \n    WHEN 'Directeur' THEN 1\n    WHEN 'Admin' THEN 2\n    WHEN 'ResponsableDept' THEN 3\n    WHEN 'ResponsableAgence' THEN 4\n    WHEN 'Responsable' THEN 5\n  END ASC",
+        "options": {}
+      },
+      "id": "b2c3d4e5-0002-0002-0002-000000000005",
+      "name": "Récupérer Responsables",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        400
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "q3VHaPxFiPyITDZ8",
+          "name": "SmartBank SQL Server PERFECT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "sla-alerts@stbbank.com.tn",
+        "toEmail": "={{ $json.Email }}",
+        "subject": "=[⚠️ ALERTE SLA - {{ $('Mettre à Jour Escalade BDD').item.json.niveauEscalade }}] Réclamation {{ $('Mettre à Jour Escalade BDD').item.json.RefReclamation }}",
+        "emailType": "html",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 650px; margin: 0 auto;\">\n  <div style=\"background: {{ $('Mettre à Jour Escalade BDD').item.json.couleurAlerte }}; color: white; padding: 20px; border-radius: 8px 8px 0 0;\">\n    <h1 style=\"margin: 0; font-size: 20px;\">🚨 STB SmartBank - Alerte SLA</h1>\n    <p style=\"margin: 5px 0 0; font-size: 16px; font-weight: bold;\">Niveau: {{ $('Mettre à Jour Escalade BDD').item.json.niveauEscalade }}</p>\n  </div>\n  <div style=\"background: white; padding: 25px; border: 2px solid {{ $('Mettre à Jour Escalade BDD').item.json.couleurAlerte }};\">\n    <p>Bonjour <strong>{{ $json.Prenom }} {{ $json.Nom }}</strong>,</p>\n    <div style=\"background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 5px; margin: 15px 0;\">\n      <strong>⚠️ Action requise: {{ $('Mettre à Jour Escalade BDD').item.json.actionRequise }}</strong>\n    </div>\n    <table style=\"width: 100%; border-collapse: collapse;\">\n      <tr style=\"background: #f8f9fa;\">\n        <td style=\"padding: 8px 12px; font-weight: bold; border: 1px solid #dee2e6; width: 40%;\">Référence</td>\n        <td style=\"padding: 8px 12px; border: 1px solid #dee2e6;\">{{ $('Mettre à Jour Escalade BDD').item.json.RefReclamation }}</td>\n      </tr>\n      <tr>\n        <td style=\"padding: 8px 12px; font-weight: bold; border: 1px solid #dee2e6;\">Type</td>\n        <td style=\"padding: 8px 12px; border: 1px solid #dee2e6;\">{{ $('Mettre à Jour Escalade BDD').item.json.Type }}</td>\n      </tr>\n      <tr style=\"background: #f8f9fa;\">\n        <td style=\"padding: 8px 12px; font-weight: bold; border: 1px solid #dee2e6;\">Agence</td>\n        <td style=\"padding: 8px 12px; border: 1px solid #dee2e6;\">{{ $('Mettre à Jour Escalade BDD').item.json.agenceNom }}</td>\n      </tr>\n      <tr>\n        <td style=\"padding: 8px 12px; font-weight: bold; border: 1px solid #dee2e6;\">Agent assigné</td>\n        <td style=\"padding: 8px 12px; border: 1px solid #dee2e6;\">{{ $('Mettre à Jour Escalade BDD').item.json.agentPrenom }} {{ $('Mettre à Jour Escalade BDD').item.json.agentNom }}</td>\n      </tr>\n      <tr style=\"background: #f8f9fa;\">\n        <td style=\"padding: 8px 12px; font-weight: bold; border: 1px solid #dee2e6;\">Délai SLA était</td>\n        <td style=\"padding: 8px 12px; border: 1px solid #dee2e6;\">{{ $('Mettre à Jour Escalade BDD').item.json.slaDue }}</td>\n      </tr>\n      <tr>\n        <td style=\"padding: 8px 12px; font-weight: bold; border: 1px solid #dee2e6; color: #c0392b;\">Retard</td>\n        <td style=\"padding: 8px 12px; border: 1px solid #dee2e6; color: #c0392b; font-weight: bold;\">{{ $('Mettre à Jour Escalade BDD').item.json.heuresDeRetard > 0 ? $('Mettre à Jour Escalade BDD').item.json.heuresDeRetard + 'h de retard' : 'Imminente' }}</td>\n      </tr>\n    </table>\n    <div style=\"text-align: center; margin: 25px 0;\">\n      <a href=\"http://localhost:4200/complaint-details/{{ $('Mettre à Jour Escalade BDD').item.json.complaintId }}\" style=\"background: {{ $('Mettre à Jour Escalade BDD').item.json.couleurAlerte }}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;\">🔍 Voir la Réclamation</a>\n    </div>\n  </div>\n  <div style=\"background: #f8f9fa; padding: 10px; text-align: center; font-size: 11px; color: #888;\">\n    Message automatique généré par SmartBank n8n Workflow - {{ $('Mettre à Jour Escalade BDD').item.json.timestampVerification }}\n  </div>\n</div>",
+        "options": {}
+      },
+      "id": "b2c3d4e5-0002-0002-0002-000000000007",
+      "name": "Email d'Escalade Responsable",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1700,
+        300
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "smartbank-smtp",
+          "name": "SmartBank SMTP"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// Résumé de la vérification SLA\nconst items = $input.all();\nconst maintenant = new Date().toISOString();\n\nconst stats = {\n  totalEscalades: items.length,\n  timestampVerification: maintenant\n};\n\nconsole.log(`[SmartBank SLA] Escalades traitées: ${items.length}`);\n\nreturn [{ json: stats }];"
+      },
+      "id": "b2c3d4e5-0002-0002-0002-000000000009",
+      "name": "Rapport Vérification SLA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "console.log('[SmartBank SLA] Aucune réclamation SLA critique trouvée. Système OK.');\nreturn [{ json: { message: 'Aucune réclamation SLA critique', timestamp: new Date().toISOString() } }];"
+      },
+      "id": "b2c3d4e5-0002-0002-0002-000000000010",
+      "name": "Aucune Alerte SLA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        540
+      ]
+    }
+  ],
+  "connections": {
+    "Planificateur - Chaque Heure": {
+      "main": [
+        [
+          {
+            "node": "Réclamations SLA Critiques",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Réclamations SLA Critiques": {
+      "main": [
+        [
+          {
+            "node": "Réclamations Trouvées ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Réclamations Trouvées ?": {
+      "main": [
+        [
+          {
+            "node": "Analyser Niveau d'Escalade",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aucune Alerte SLA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyser Niveau d'Escalade": {
+      "main": [
+        [
+          {
+            "node": "Mettre à Jour Escalade BDD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mettre à Jour Escalade BDD": {
+      "main": [
+        [
+          {
+            "node": "Récupérer Responsables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Récupérer Responsables": {
+      "main": [
+        [
+          {
+            "node": "Email d'Escalade Responsable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email d'Escalade Responsable": {
+      "main": [
+        [
+          {
+            "node": "Rapport Vérification SLA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "meta": {
+    "instanceId": "smartbank-n8n"
+  },
+  "id": "smartbank-wf-002",
+  "tags": [
+    {
+      "id": "tag1",
+      "name": "SmartBank"
+    },
+    {
+      "id": "tag3",
+      "name": "SLA"
+    },
+    {
+      "id": "tag4",
+      "name": "Escalade"
+    }
+  ]
+}

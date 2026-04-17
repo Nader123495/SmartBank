@@ -1,0 +1,82 @@
+# SmartBank — SQL Server + API + front (nginx)
+# Prérequis : .env (copie de .env.example), puis initialiser la base (voir docker/init-db.ps1)
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: smartbank-sql
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    # Mot de passe interpolé comme pour le service (évite $$ interprété comme PID du shell dans le healthcheck).
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"${MSSQL_SA_PASSWORD}\" -C -Q \"SELECT 1\" -b -o /dev/null || exit 1",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: smartbank-api
+    init: true
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://0.0.0.0:8080
+      # Pas de Password= ici : fusion avec MSSQL_SA_PASSWORD dans Program.cs (caractères spéciaux dans le mot de passe).
+      ConnectionStrings__SmartBankDB: "Server=sqlserver,1433;Database=SmartBankDB;User Id=sa;TrustServerCertificate=True;Encrypt=False;MultipleActiveResultSets=true"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}"
+      # Défaut sans « ! » : en YAML/Compose, « ! » peut corrompre la valeur et casser la config JWT au démarrage.
+      Jwt__Key: "${JWT_KEY:-SmartBank_STB2025_SecretKey_MinLength32Chars_XX}"
+      Recaptcha__Enabled: "false"
+      # Optionnel : Ollama sur la machine hôte (Docker Desktop)
+      OllamaSettings__BaseUrl: "${OLLAMA_BASE_URL:-http://host.docker.internal:11434}"
+    ports:
+      - "5000:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 90s
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: smartbank-web
+    ports:
+      - "8080:80"
+    # Démarre dès que le processus API existe (évite blocage si healthcheck trop strict).
+    depends_on:
+      api:
+        condition: service_started
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: smartbank-mailhog
+    ports:
+      - "1025:1025"   # SMTP port
+      - "8025:8025"   # Web UI to see captured emails
+    restart: unless-stopped
+
+volumes:
+  sqlserver_data:

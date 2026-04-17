@@ -1,0 +1,152 @@
+<div class="suivi-page fade-in">
+  <!-- Navbar épurée -->
+  <nav class="suivi-navbar">
+    <div class="navbar-container">
+      <a routerLink="/" class="navbar-brand">
+        <img src="assets/images/stb-logo.png" alt="STB Bank" class="brand-logo">
+        <span class="brand-name">STB Bank</span>
+      </a>
+
+      <div class="navbar-links">
+        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}">Accueil</a>
+        <a routerLink="/depot" routerLinkActive="active">Déposer</a>
+        <a routerLink="/suivi" routerLinkActive="active">Suivi</a>
+      </div>
+
+      <div class="navbar-actions">
+        <!-- Badges sécurité intégrés -->
+        <div class="security-badges">
+          <span class="badge-item">🔒 Connexion sécurisée</span>
+          <span class="badge-item">🛡️ Confidentialité garantie</span>
+        </div>
+        <a routerLink="/auth/login" class="btn-login-outline">Connexion</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Section Hero -->
+  <header class="suivi-hero">
+    <div class="hero-content animate-fade-up">
+      <h1>Suivi de ma réclamation</h1>
+      <p class="hero-subtitle">Consultez l'état d'avancement de votre dossier en toute transparence.</p>
+      
+      <div class="hero-trust-icons">
+        <div class="trust-icon">
+          <span class="icon">🔒</span>
+          <span class="label">Connexion sécurisée</span>
+        </div>
+        <div class="trust-icon">
+          <span class="icon">📋</span>
+          <span class="label">Réponse sous 72h</span>
+        </div>
+        <div class="trust-icon">
+          <span class="icon">✉️</span>
+          <span class="label">Notification par email</span>
+        </div>
+      </div>
+
+      <a routerLink="/depot" class="hero-link">Déposer une nouvelle réclamation →</a>
+    </div>
+  </header>
+
+  <main class="suivi-main">
+    <!-- Carte d'accès centrée -->
+    <div class="access-card-container animate-fade-up">
+      <div class="access-card">
+        <div class="card-icon-circle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </div>
+        <h2>Accéder à mon dossier</h2>
+        
+        <form [formGroup]="searchForm" (ngSubmit)="search()" class="access-form">
+          <div class="form-group" [class.error]="searchForm.get('reference')?.invalid && searchForm.get('reference')?.touched">
+            <label>Numéro de suivi</label>
+            <input formControlName="reference" placeholder="Ex. RECL-2025-00001">
+          </div>
+          
+          <div class="form-group" [class.error]="searchForm.get('email')?.invalid && searchForm.get('email')?.touched">
+            <label>Adresse email</label>
+            <input formControlName="email" type="email" placeholder="votre@email.com">
+          </div>
+
+          <button type="submit" class="btn-consult" [disabled]="loading()">
+            @if (loading()) { <span class="spinner"></span> }
+            Consulter mon dossier
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </button>
+        </form>
+        
+        <p class="card-hint">Votre référence vous a été envoyée par email lors du dépôt</p>
+
+        @if (error() && searched()) {
+          <div class="alert-error mt-3">{{ error() }}</div>
+        }
+      </div>
+    </div>
+
+    <!-- Timeline de statut (Après soumission) -->
+    @if (complaint(); as c) {
+      <div class="result-container animate-fade-up">
+        <div class="status-timeline-card">
+          <h3>Progression du dossier</h3>
+          <div class="status-steps">
+            <div class="step" [class.active]="getTimelineStep(c.status) >= 1" [class.current]="getTimelineStep(c.status) === 1">
+              <div class="step-blob">1</div>
+              <span class="step-label">Déposée</span>
+            </div>
+            <div class="step-line" [class.active]="getTimelineStep(c.status) >= 2"></div>
+            <div class="step" [class.active]="getTimelineStep(c.status) >= 2" [class.current]="getTimelineStep(c.status) === 2">
+              <div class="step-blob">2</div>
+              <span class="step-label">En cours</span>
+            </div>
+            <div class="step-line" [class.active]="getTimelineStep(c.status) >= 3"></div>
+            <div class="step" [class.active]="getTimelineStep(c.status) >= 3" [class.current]="getTimelineStep(c.status) === 3">
+              <div class="step-blob">3</div>
+              <span class="step-label">Résolue</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Détails de la réclamation -->
+        <div class="detail-card mt-4">
+          <div class="detail-header">
+            <span class="ref-tag">{{ c.reference }}</span>
+            <span class="status-pill" [attr.data-status]="c.status">{{ c.status }}</span>
+          </div>
+          <h3>{{ c.title }}</h3>
+          <p class="description">{{ c.description }}</p>
+          
+          <div class="detail-grid">
+            <div class="grid-item">
+              <span class="label">Type</span>
+              <span class="value">{{ c.complaintType }}</span>
+            </div>
+            <div class="grid-item">
+              <span class="label">Priorité</span>
+              <span class="value">{{ c.priority }}</span>
+            </div>
+            <div class="grid-item">
+              <span class="label">Déposé le</span>
+              <span class="value">{{ formatDate(c.createdAt) }}</span>
+            </div>
+          </div>
+
+          @if (c.resolutionNote) {
+            <div class="response-box mt-4">
+              <h4>Réponse de la STB Bank</h4>
+              <p>{{ c.resolutionNote }}</p>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </main>
+
+  <!-- Footer blanc -->
+  <footer class="suivi-footer">
+    <div class="footer-container">
+      <span class="copyright">© {{ 2026 }} STB Bank — Tous droits réservés</span>
+      <a routerLink="/auth/login" class="link-pro">Espace professionnel</a>
+    </div>
+  </footer>
+</div>

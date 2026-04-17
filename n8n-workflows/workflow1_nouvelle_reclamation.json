@@ -1,0 +1,343 @@
+{
+  "name": "SmartBank - Workflow 1: Traitement Nouvelle Réclamation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "complaint/new",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Webhook - Nouvelle Réclamation",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        400
+      ],
+      "webhookId": "smartbank-complaint-new"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst requiredFields = ['clientName', 'clientEmail', 'typeId', 'description', 'canal', 'agenceId'];\nconst missing = requiredFields.filter(f => !body[f]);\nif (missing.length > 0) throw new Error(`Champs manquants: ${missing.join(', ')}`);\nconst slaMap = { 1: { slaHeures: 24, priorite: 'High' }, 'default': { slaHeures: 72, priorite: 'Low' } };\nconst slaInfo = slaMap[body.typeId] || slaMap['default'];\nconst maintenant = new Date();\nreturn [{ json: { clientName: body.clientName, clientEmail: body.clientEmail, typeId: body.typeId, description: body.description, canal: body.canal, agenceId: body.agenceId, priorite: body.priorite || slaInfo.priorite, slaHeures: slaInfo.slaHeures, slaDueDate: new Date(maintenant.getTime() + slaInfo.slaHeures * 3600000).toISOString(), dateCreation: maintenant.toISOString(), statut: 'Pending', refReclamation: `REF-${Date.now()}` } }];"
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000002",
+      "name": "Valider & Enrichir Données",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO Complaints (ClientName, ClientEmail, ComplaintTypeId, Title, Description, Channel, AgencyId, Priority, Status, SLADeadline, CreatedAt, Reference, IsEscalated)\nOUTPUT INSERTED.Id\nVALUES (\n  '{{ $json.clientName }}',\n  '{{ $json.clientEmail }}',\n  {{ $json.typeId }},\n  'Nouvelle Reclamation n8n',\n  '{{ $json.description }}',\n  '{{ $json.canal }}',\n  {{ $json.agenceId }},\n  '{{ $json.priorite }}',\n  'Pending',\n  '{{ $json.slaDueDate }}',\n  '{{ $json.dateCreation }}',\n  '{{ $json.refReclamation }}',\n  0\n)",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000003",
+      "name": "Insérer Réclamation SQL",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        720,
+        400
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "q3VHaPxFiPyITDZ8",
+          "name": "SmartBank SQL Server PERFECT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  u.Id AS agentId,\n  u.FirstName AS Nom,\n  u.LastName AS Prenom,\n  u.Email AS agentEmail,\n  COUNT(c.Id) AS chargeActuelle\nFROM Users u\nLEFT JOIN Complaints c ON c.AssignedToUserId = u.Id AND c.Status != 'Closed'\nWHERE u.AgencyId = 1\nAND u.IsActive = 1\nGROUP BY u.Id, u.FirstName, u.LastName, u.Email\nORDER BY chargeActuelle ASC",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000004",
+      "name": "Récupérer Charge des Agents",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        960,
+        400
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "q3VHaPxFiPyITDZ8",
+          "name": "SmartBank SQL Server PERFECT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Algorithme d'attribution intelligente\n// Prend l'agent avec la plus faible charge\n// Si plusieurs agents ont la même charge, prend celui avec la spécialité correspondante\n\nconst agents = $input.all().map(i => i.json);\nconst typeReclamation = $('Valider & Enrichir Données').item.json.type;\nconst complaintId = $('Insérer Réclamation SQL').item.json.Id;\nconst enriched = $('Valider & Enrichir Données').item.json;\n\nif (!agents || agents.length === 0) {\n  throw new Error('Aucun agent disponible dans cette agence');\n}\n\n// Trier: priorité à la spécialité correspondante, puis par charge\nconst agentTrie = agents.sort((a, b) => {\n  const aSpec = (a.Specialite || '').includes(typeReclamation) ? -1 : 0;\n  const bSpec = (b.Specialite || '').includes(typeReclamation) ? -1 : 0;\n  if (aSpec !== bSpec) return aSpec - bSpec;\n  return (a.chargeActuelle || 0) - (b.chargeActuelle || 0);\n});\n\nconst agentChoisi = agentTrie[0];\n\nconst maintenant = new Date().toISOString();\n\nreturn [{\n  json: {\n    complaintId: complaintId,\n    agentId: agentChoisi.agentId,\n    agentNom: `${agentChoisi.Prenom} ${agentChoisi.Nom}`,\n    agentEmail: agentChoisi.Email,\n    chargeAvant: agentChoisi.chargeActuelle,\n    refReclamation: enriched.refReclamation,\n    type: enriched.type,\n    priorite: enriched.priorite,\n    slaDueDate: enriched.slaDueDate,\n    slaHeures: enriched.slaHeures,\n    dateAssignation: maintenant,\n    clientId: enriched.clientId,\n    description: enriched.description\n  }\n}];"
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000005",
+      "name": "Sélectionner Meilleur Agent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE Complaints\nSET AssignedToUserId = {{ $json.agentId }},\n    Status = 'Assigned',\n    UpdatedAt = GETUTCDATE()\nWHERE Id = {{ $('Insérer Réclamation SQL').item.json.Id }};\n\nINSERT INTO SLA (ComplaintId, SlaHeures, DateDebut, DateLimite, Statut)\nVALUES (\n    {{ $('Insérer Réclamation SQL').item.json.Id }}, \n    {{ $('Valider & Enrichir Données').item.json.slaHeures }}, \n    GETUTCDATE(), \n    '{{ $('Valider & Enrichir Données').item.json.slaDueDate }}', \n    'EnCours'\n);",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000006",
+      "name": "Mettre à Jour BDD + SLA",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        400
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "q3VHaPxFiPyITDZ8",
+          "name": "SmartBank SQL Server PERFECT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@stbbank.com.tn",
+        "toEmail": "agent1@stb.com.tn",
+        "subject": "=[STB SmartBank] Nouvelle Réclamation Assignée - {{ $json.refReclamation }}",
+        "emailType": "html",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f5f5f5; padding: 20px;\">\n  <div style=\"background: #003b74; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;\">\n    <h1 style=\"margin: 0; font-size: 22px;\">🏦 STB SmartBank</h1>\n    <p style=\"margin: 5px 0 0; font-size: 14px;\">Système de Gestion des Réclamations</p>\n  </div>\n  <div style=\"background: white; padding: 25px; border-radius: 0 0 8px 8px;\">\n    <h2 style=\"color: #003b74;\">Bonjour {{ $json.agentNom }},</h2>\n    <p>Une nouvelle réclamation vous a été <strong>automatiquement assignée</strong>.</p>\n    <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n      <tr style=\"background: #f0f4ff;\">\n        <td style=\"padding: 10px; font-weight: bold; border: 1px solid #ddd;\">Référence</td>\n        <td style=\"padding: 10px; border: 1px solid #ddd;\">{{ $json.refReclamation }}</td>\n      </tr>\n      <tr>\n        <td style=\"padding: 10px; font-weight: bold; border: 1px solid #ddd;\">Type</td>\n        <td style=\"padding: 10px; border: 1px solid #ddd;\">{{ $json.type }}</td>\n      </tr>\n      <tr style=\"background: #f0f4ff;\">\n        <td style=\"padding: 10px; font-weight: bold; border: 1px solid #ddd;\">Priorité</td>\n        <td style=\"padding: 10px; border: 1px solid #ddd;\"><span style=\"color: {{ $json.priorite === 'Critique' ? '#c0392b' : $json.priorite === 'Haute' ? '#e67e22' : '#27ae60' }}; font-weight: bold;\">{{ $json.priorite }}</span></td>\n      </tr>\n      <tr>\n        <td style=\"padding: 10px; font-weight: bold; border: 1px solid #ddd;\">Délai SLA</td>\n        <td style=\"padding: 10px; border: 1px solid #ddd;\">{{ $json.slaHeures }} heures (avant le {{ $json.slaDueDate }})</td>\n      </tr>\n      <tr style=\"background: #f0f4ff;\">\n        <td style=\"padding: 10px; font-weight: bold; border: 1px solid #ddd;\">Description</td>\n        <td style=\"padding: 10px; border: 1px solid #ddd;\">{{ $json.description }}</td>\n      </tr>\n    </table>\n    <div style=\"text-align: center; margin: 25px 0;\">\n      <a href=\"http://smartbank.stb.com.tn/complaints/{{ $json.complaintId }}\" style=\"background: #003b74; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;\">Traiter la Réclamation</a>\n    </div>\n    <p style=\"color: #888; font-size: 12px; border-top: 1px solid #eee; padding-top: 15px; margin-top: 15px;\">Ce message est généré automatiquement par le système SmartBank. Ne pas répondre à cet email.</p>\n  </div>\n</div>",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000007",
+      "name": "Envoyer Email à l'Agent",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1680,
+        280
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "BSklPeVUMqJtRmZX",
+          "name": "smartbank-smtp"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5000/api/integrations/n8n/complaints/{{$json.complaintId}}/notify",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8n-Secret",
+              "value": "change-me-n8n-shared-secret"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "userId",
+              "value": "={{ $json.agentId }}"
+            },
+            {
+              "name": "title",
+              "value": "=Nouvelle réclamation assignée"
+            },
+            {
+              "name": "message",
+              "value": "={{ 'Réclamation ' + $json.refReclamation + ' vous a été assignée. Priorité: ' + $json.priorite }}"
+            },
+            {
+              "name": "type",
+              "value": "info"
+            },
+            {
+              "name": "complaintId",
+              "value": "={{ $json.complaintId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000008",
+      "name": "Notifier Système (Push)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"message\": \"Réclamation créée et assignée avec succès\",\n  \"data\": {\n    \"complaintId\": {{ $('Sélectionner Meilleur Agent').item.json.complaintId }},\n    \"refReclamation\": \"{{ $('Sélectionner Meilleur Agent').item.json.refReclamation }}\",\n    \"statut\": \"Assignée\",\n    \"agentAssigne\": \"{{ $('Sélectionner Meilleur Agent').item.json.agentNom }}\",\n    \"slaDueDate\": \"{{ $('Sélectionner Meilleur Agent').item.json.slaDueDate }}\",\n    \"slaHeures\": {{ $('Sélectionner Meilleur Agent').item.json.slaHeures }}\n  }\n}",
+        "options": {
+          "responseCode": 201
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000009",
+      "name": "Réponse Succès",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1920,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": false,\n  \"message\": \"Erreur lors du traitement de la réclamation\",\n  \"erreur\": \"{{ $json.message }}\"\n}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000010",
+      "name": "Réponse Erreur",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        600
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook - Nouvelle Réclamation": {
+      "main": [
+        [
+          {
+            "node": "Valider & Enrichir Données",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valider & Enrichir Données": {
+      "main": [
+        [
+          {
+            "node": "Insérer Réclamation SQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insérer Réclamation SQL": {
+      "main": [
+        [
+          {
+            "node": "Récupérer Charge des Agents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Récupérer Charge des Agents": {
+      "main": [
+        [
+          {
+            "node": "Sélectionner Meilleur Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sélectionner Meilleur Agent": {
+      "main": [
+        [
+          {
+            "node": "Mettre à Jour BDD + SLA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mettre à Jour BDD + SLA": {
+      "main": [
+        [
+          {
+            "node": "Envoyer Email à l'Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notifier Système (Push)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envoyer Email à l'Agent": {
+      "main": [
+        [
+          {
+            "node": "Réponse Succès",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notifier Système (Push)": {
+      "main": [
+        [
+          {
+            "node": "Réponse Succès",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "smartbank-n8n"
+  },
+  "id": "smartbank-wf-001",
+  "tags": [
+    {
+      "createdAt": "2026-04-11T00:00:00.000Z",
+      "updatedAt": "2026-04-11T00:00:00.000Z",
+      "id": "tag1",
+      "name": "SmartBank"
+    },
+    {
+      "createdAt": "2026-04-11T00:00:00.000Z",
+      "updatedAt": "2026-04-11T00:00:00.000Z",
+      "id": "tag2",
+      "name": "Réclamations"
+    }
+  ]
+}

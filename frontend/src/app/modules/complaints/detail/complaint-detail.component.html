@@ -1,0 +1,239 @@
+<!-- src/app/modules/complaints/detail/complaint-detail.component.html -->
+<ng-container>
+  <div class="detail-page">
+  @if (loading()) {
+    <div class="loading-center"><div class="spinner-lg"></div></div>
+  }
+
+  @if (!loading() && !complaint()) {
+    <div class="detail-page empty-state">
+      <a routerLink="/complaints" class="btn btn-ghost btn-sm">← Retour à la liste</a>
+      <div class="empty-state-box">
+        <h2>Réclamation introuvable ou erreur de chargement</h2>
+        @if (loadError()) {
+          <p class="error-detail">{{ loadError() }}</p>
+        } @else {
+          <p>Cette réclamation n'existe pas ou vous n'avez pas les droits pour la consulter.</p>
+        }
+        <a routerLink="/complaints" class="btn btn-primary" style="margin-top:1rem">Retour aux réclamations</a>
+      </div>
+    </div>
+  }
+
+  @if (complaint() && !loading()) {
+    <div class="detail-header">
+      <div class="detail-ref-row">
+        <a routerLink="/complaints" class="btn btn-ghost btn-sm">← Retour</a>
+        <span class="ref-tag">{{ complaint()!.reference }}</span>
+        <span class="badge" [ngClass]="priorityClass(complaint()!.priority)">{{ complaint()!.priority }}</span>
+        <span class="badge" [ngClass]="statusClass(complaint()!.status)">{{ complaint()!.status }}</span>
+        @if (complaint()!.status !== 'Clôturée' && complaint()!.status !== 'Rejetée') {
+          <button type="button" class="btn btn-primary btn-sm btn-status" (click)="openStatusModal()" title="Changer le statut">
+            <span class="btn-status-icon">↻</span> Changer Statut
+          </button>
+        }
+        @if (complaint()!.isEscalated) { <span class="badge badge-escalade">🚨 ESC</span> }
+        @if (complaint()!.isSLABreached) { <span class="badge badge-critique">⏱️ SLA DÉPASSÉ</span> }
+      </div>
+      <h1 class="detail-title">{{ complaint()!.title }}</h1>
+      <div class="detail-actions">
+        @if (auth.isResponsable()) {
+          <button type="button" class="btn btn-secondary btn-sm" (click)="autoAssign()">⚡ Auto-Assigner</button>
+          <button type="button" class="btn btn-secondary btn-sm" (click)="showAssignModal.set(true)">👤 Assigner</button>
+        }
+        <button type="button" class="btn btn-secondary btn-sm" (click)="showCommentModal.set(true)">💬 Commenter</button>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="generateDraft()">✍️ Générer réponse IA</button>
+        @if (complaint()!.status !== 'Clôturée' && complaint()!.status !== 'Rejetée') {
+          <button type="button" class="btn btn-primary btn-sm btn-status" (click)="openStatusModal()"><span class="btn-status-icon">↻</span> Changer Statut</button>
+        }
+        <a [routerLink]="['/complaints', complaint()!.id, 'edit']" class="btn btn-ghost btn-sm">✏️ Modifier</a>
+      </div>
+    </div>
+
+    <div class="detail-grid">
+      <!-- Left column -->
+      <div class="detail-main">
+        <div class="card">
+          <h3>Description</h3>
+          <p>{{ complaint()!.description }}</p>
+        </div>
+        <div class="card">
+          <h3>Historique du Workflow</h3>
+          <div class="timeline">
+            @for (h of complaint()!.statusHistory; track h.changedAt) {
+              <div class="tl-item">
+                <div class="tl-dot" [class.done]="h.newStatus === 'Clôturée'" [class.rej]="h.newStatus === 'Rejetée'"></div>
+                <div class="tl-content">
+                  <div class="tl-head">
+                    <span class="tl-status">{{ h.oldStatus ?? 'Début' }} → {{ h.newStatus }}</span>
+                    <span class="tl-time">{{ h.changedAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                  </div>
+                  @if (h.changedBy) { <div class="tl-by">Par: {{ h.changedBy }}</div> }
+                  @if (h.comment) { <div class="tl-note">{{ h.comment }}</div> }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+            <h3 style="margin:0">Commentaires</h3>
+            <button type="button" class="btn btn-sm btn-primary" (click)="showCommentModal.set(true)">+ Ajouter</button>
+          </div>
+          @if (complaint()!.comments?.length === 0) {
+            <p style="color:var(--gray-500);font-size:.85rem">Aucun commentaire pour le moment.</p>
+          }
+          @for (c of complaint()!.comments; track c.id) {
+            <div class="comment-item" [class.internal]="c.isInternal">
+              <div class="comment-head">
+                <span class="comment-author">{{ c.authorName }}</span>
+                @if (c.isInternal) { <span class="comment-internal-badge">Interne</span> }
+                <span class="comment-time">{{ c.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+              </div>
+              <div class="comment-text">{{ c.content }}</div>
+            </div>
+          }
+        </div>
+
+        <!-- Attachments -->
+        @if (complaint()!.attachments?.length) {
+          <div class="card">
+            <h3>Pièces Jointes</h3>
+            <div class="attachments">
+              @for (a of complaint()!.attachments; track a.id) {
+                <div class="attachment-item">
+                  <span class="file-icon">📎</span>
+                  <div>
+                    <p class="file-name">{{ a.fileName }}</p>
+                    <p class="file-meta">{{ formatFileSize(a.fileSize) }} · {{ a.uploadedAt | date:'dd/MM/yyyy' }}</p>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="detail-sidebar">
+        <div class="card">
+          <h3>Informations</h3>
+          <dl class="info-dl">
+            <dt class="info-dt">Type</dt><dd class="info-dd">{{ complaint()!.complaintType }}</dd>
+            <dt class="info-dt">Canal</dt><dd class="info-dd">{{ complaint()!.channel }}</dd>
+            <dt class="info-dt">Agence</dt><dd class="info-dd">{{ complaint()!.agency ?? '—' }}</dd>
+            <dt class="info-dt">Assigné à</dt><dd class="info-dd">{{ complaint()!.assignedTo ?? 'Non assigné' }}</dd>
+            <dt class="info-dt">SLA Deadline</dt>
+            <dd class="info-dd" [class.breach]="complaint()!.isSLABreached">
+              {{ complaint()!.slaDeadline ? (complaint()!.slaDeadline | date:'dd/MM/yyyy HH:mm') : '—' }}
+            </dd>
+            <dt class="info-dt">Créé le</dt><dd class="info-dd">{{ complaint()!.createdAt | date:'dd/MM/yyyy HH:mm' }}</dd>
+            @if (complaint()!.closedAt) {
+              <dt class="info-dt">Clôturé le</dt><dd class="info-dd">{{ complaint()!.closedAt | date:'dd/MM/yyyy HH:mm' }}</dd>
+            }
+          </dl>
+        </div>
+        <div class="card">
+          <h3>Client</h3>
+          <dl class="info-dl">
+            <dt class="info-dt">Nom</dt><dd class="info-dd">{{ complaint()!.clientName ?? '—' }}</dd>
+            <dt class="info-dt">Email</dt><dd class="info-dd">{{ complaint()!.clientEmail ?? '—' }}</dd>
+            <dt class="info-dt">Téléphone</dt><dd class="info-dd">{{ complaint()!.clientPhone ?? '—' }}</dd>
+            <dt class="info-dt">N° Compte</dt><dd class="info-dd">{{ complaint()!.clientAccountNumber ?? '—' }}</dd>
+          </dl>
+        </div>
+        @if (complaint()!.resolutionNote) {
+          <div class="resolution-box">
+            <h4>Note de Résolution</h4>
+            <p>{{ complaint()!.resolutionNote }}</p>
+          </div>
+        }
+        @if (complaint()!.rejectionReason) {
+          <div class="alert-banner error" style="margin-top:0.5rem">
+            <span>❌</span>
+            <span><strong>Motif de Rejet</strong> — {{ complaint()!.rejectionReason }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  }
+  </div>
+
+  <!-- Modal Changer statut : en dehors de .detail-page pour garantir l'affichage -->
+  @if (showStatusModal()) {
+    <div class="status-modal-backdrop" (click)="closeStatusModal()" role="dialog" aria-modal="true" aria-labelledby="status-modal-title">
+      <div class="status-modal-box" (click)="$event.stopPropagation()">
+        <h2 id="status-modal-title">Changer le statut</h2>
+        <p class="modal-desc">Sélectionnez le nouveau statut de la réclamation et ajoutez un commentaire si besoin.</p>
+        @if (statusError()) {
+          <div class="alert-banner error" style="margin-bottom:1rem">⚠️ {{ statusError() }}</div>
+        }
+        <div class="modal-fg">
+          <label>Nouveau statut <span class="req">*</span></label>
+          <select class="inp" [(ngModel)]="newStatus" required>
+            <option value="">— Sélectionner —</option>
+            @for (s of statuses; track s) {
+              <option [value]="s">{{ s }}</option>
+            }
+          </select>
+        </div>
+        <div class="modal-fg">
+          <label>Commentaire (optionnel)</label>
+          <textarea class="inp" [(ngModel)]="statusComment" rows="3" placeholder="Ex. Prise en charge - contact client établi par téléphone"></textarea>
+        </div>
+        @if (newStatus === 'Clôturée') {
+          <div class="modal-fg">
+            <label>Note de résolution</label>
+            <textarea class="inp" [(ngModel)]="resolutionNote" rows="3" placeholder="Détaillez la résolution..."></textarea>
+          </div>
+        }
+        @if (newStatus === 'Rejetée') {
+          <div class="modal-fg">
+            <label>Motif de rejet</label>
+            <textarea class="inp" [(ngModel)]="rejectionReason" rows="3" placeholder="Motif du rejet..."></textarea>
+          </div>
+        }
+        <div class="status-modal-actions">
+          <button type="button" class="btn btn-ghost" (click)="closeStatusModal()">Annuler</button>
+          <button type="button" class="btn btn-primary" (click)="submitStatus()" [disabled]="!newStatus">Confirmer</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showDraftModal()) {
+    <div class="modal-overlay open" (click)="showDraftModal.set(false)">
+      <div class="modal modal-lg" (click)="$event.stopPropagation()">
+        <h2>✍️ Réponse client (IA)</h2>
+        @if (draftLoading()) {
+          <p>Génération en cours...</p>
+        } @else {
+          <div class="modal-fg">
+            <textarea class="inp" [ngModel]="draftText()" (ngModelChange)="draftText.set($event)" rows="10" placeholder="Brouillon de réponse..."></textarea>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" (click)="copyDraft()">Copier</button>
+            <button type="button" class="btn btn-primary" (click)="sendDraftAsComment()">Envoyer comme commentaire</button>
+            <button type="button" class="btn btn-ghost" (click)="showDraftModal.set(false)">Fermer</button>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  @if (showCommentModal()) {
+    <div class="modal-overlay open" (click)="showCommentModal.set(false)">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <h2>Ajouter un Commentaire</h2>
+        <div class="modal-fg"><textarea class="inp" [(ngModel)]="newComment" rows="5" placeholder="Votre commentaire..."></textarea></div>
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.8rem;margin-bottom:1rem">
+          <input type="checkbox" [(ngModel)]="commentInternal" />
+          Commentaire interne (non visible par le client)
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" (click)="showCommentModal.set(false)">Annuler</button>
+          <button type="button" class="btn btn-primary" (click)="submitComment()" [disabled]="!newComment">Envoyer</button>
+        </div>
+      </div>
+    </div>
+  }
+</ng-container>
