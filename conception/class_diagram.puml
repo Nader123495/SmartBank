@@ -1,0 +1,19 @@
+@startuml
+
+class Bank {
+    +String name
+    +String location
+    +void openAccount()
+    +void closeAccount()
+}
+
+class Account {
+    +String accountNumber
+    +double balance
+    +void deposit(double amount)
+    +void withdraw(double amount)
+}
+
+Bank "1" -- "*" Account : manages
+
+@enduml
