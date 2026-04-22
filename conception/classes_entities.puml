@@ -1,0 +1,25 @@
+@startuml
+
+class Customer {
+    +String name
+    +String email
+    +String accountNumber
+}
+
+class Account {
+    +String accountNumber
+    +double balance
+}
+
+class Transaction {
+    +String transactionId
+    +double amount
+    +Date date
+}
+
+class AuditLog {
+    +String auditId
+    +Date actionTime
+}
+
+@enduml
