@@ -1,0 +1,365 @@
+<div class="sla-configuration-container">
+  <!-- HEADER -->
+  <div class="config-header">
+    <h2>⚙️ Configuration SLA</h2>
+    <div class="header-actions">
+      <button class="btn btn-primary" (click)="openTemplateForm()">
+        <span class="icon">➕</span> Nouveau Template
+      </button>
+      <button class="btn btn-secondary" (click)="exportConfiguration()">
+        <span class="icon">📥</span> Exporter
+      </button>
+      <label class="btn btn-secondary">
+        <span class="icon">📤</span> Importer
+        <input type="file" accept=".json" (change)="importConfiguration($event)" style="display: none;">
+      </label>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT (2 COLONNES) -->
+  <div class="config-content">
+    
+    <!-- COLONNE GAUCHE: LIST TEMPLATES -->
+    <div class="templates-panel">
+      <div class="panel-header">
+        <h3>Templates SLA</h3>
+        <span class="badge badge-count">{{ slaTemplates.length }}</span>
+      </div>
+
+      <div class="templates-list" *ngIf="!isLoading">
+        <div 
+          *ngFor="let template of slaTemplates"
+          class="template-card"
+          [class.active]="selectedTemplate?.id === template.id"
+          (click)="selectTemplate(template)">
+          
+          <!-- TOP: Type + Priority -->
+          <div class="template-header">
+            <div class="template-type">
+              <strong>{{ template.type }}</strong>
+              <span class="priority-badge" [ngClass]="getPriorityClass(template.priority)">
+                {{ template.priority }}
+              </span>
+            </div>
+            <span class="status-badge" [ngClass]="getStatusClass(template.isActive)">
+              {{ template.isActive ? '✓ Actif' : '✗ Inactif' }}
+            </span>
+          </div>
+
+          <!-- MIDDLE: Progress Bar -->
+          <div class="template-progress">
+            <div class="progress-label">{{ template.slaHours }}h SLA</div>
+            <div class="progress-bar-container">
+              <div class="progress-bar" [style.width.%]="(template.escalationLevels.length / 5) * 100"></div>
+            </div>
+            <div class="progress-info">{{ template.escalationLevels.length }} niveaux d'escalade</div>
+          </div>
+
+          <!-- BOTTOM: Actions -->
+          <div class="template-actions">
+            <button 
+              class="btn-icon btn-edit"
+              (click)="openTemplateForm(template); $event.stopPropagation()"
+              title="Éditer">
+              ✏️
+            </button>
+            <button 
+              class="btn-icon btn-delete"
+              (click)="deleteTemplate(template.id); $event.stopPropagation()"
+              title="Supprimer">
+              🗑️
+            </button>
+          </div>
+        </div>
+
+        <!-- EMPTY STATE -->
+        <div *ngIf="slaTemplates.length === 0" class="empty-state">
+          <p>Aucun template SLA</p>
+          <p class="text-muted">Cliquez sur "Nouveau Template" pour commencer</p>
+        </div>
+      </div>
+
+      <!-- LOADING -->
+      <div *ngIf="isLoading" class="loading-spinner">
+        <div class="spinner"></div>
+        <p>Chargement...</p>
+      </div>
+    </div>
+
+    <!-- COLONNE DROITE: DÉTAILS + ESCALADE -->
+    <div class="details-panel">
+      <ng-container *ngIf="selectedTemplate; else noSelection">
+        
+        <!-- SECTION 1: INFORMATIONS GÉNÉRALES -->
+        <div class="detail-section">
+          <div class="section-header">
+            <h4>📋 Informations Générales</h4>
+          </div>
+          <div class="detail-content">
+            <div class="detail-row">
+              <label>Type de Réclamation:</label>
+              <span class="value">{{ selectedTemplate.type }}</span>
+            </div>
+            <div class="detail-row">
+              <label>Durée SLA:</label>
+              <span class="value">{{ selectedTemplate.slaHours }} heures</span>
+            </div>
+            <div class="detail-row">
+              <label>Priorité:</label>
+              <span class="value priority-badge" [ngClass]="getPriorityClass(selectedTemplate.priority)">
+                {{ selectedTemplate.priority }}
+              </span>
+            </div>
+            <div class="detail-row">
+              <label>Statut:</label>
+              <span class="value status-badge" [ngClass]="getStatusClass(selectedTemplate.isActive)">
+                {{ selectedTemplate.isActive ? '✓ Actif' : '✗ Inactif' }}
+              </span>
+            </div>
+            <div class="detail-row full-width">
+              <label>Description:</label>
+              <p class="value">{{ selectedTemplate.description }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 2: NIVEAUX D'ESCALADE -->
+        <div class="detail-section escalation-section">
+          <div class="section-header">
+            <h4>⚡ Niveaux d'Escalade</h4>
+            <button 
+              class="btn btn-sm btn-primary"
+              (click)="openEscalationForm()">
+              + Ajouter Niveau
+            </button>
+          </div>
+
+          <div class="escalation-list" *ngIf="selectedTemplate.escalationLevels.length > 0">
+            <div 
+              *ngFor="let esc of selectedTemplate.escalationLevels | slice:0:5"
+              class="escalation-card"
+              [class]="'level-' + esc.level">
+              
+              <div class="escalation-header">
+                <span class="level-number">Niveau {{ esc.level }}</span>
+                <span class="level-name">{{ esc.name }}</span>
+                <button 
+                  class="btn-icon btn-delete"
+                  (click)="deleteEscalationLevel(selectedTemplate!.id, esc.level)"
+                  title="Supprimer ce niveau">
+                  🗑️
+                </button>
+              </div>
+
+              <div class="escalation-body">
+                <div class="escalation-row">
+                  <label>Seuil:</label>
+                  <span class="value">{{ esc.minutesThreshold }} minutes restantes</span>
+                </div>
+                <div class="escalation-row">
+                  <label>Destinataire:</label>
+                  <span class="value">{{ esc.targetRole }}</span>
+                </div>
+                <div class="escalation-row">
+                  <label>Canaux:</label>
+                  <div class="channels">
+                    <span *ngFor="let channel of esc.channels" class="channel-badge">
+                      {{ channel }}
+                    </span>
+                  </div>
+                </div>
+                <div class="escalation-row full-width">
+                  <label>Action requise:</label>
+                  <p class="value">{{ esc.requiredAction }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div *ngIf="selectedTemplate.escalationLevels.length === 0" class="empty-escalation">
+            <p>Aucun niveau d'escalade configuré</p>
+            <p class="text-muted">Cliquez sur "Ajouter Niveau" pour commencer</p>
+          </div>
+        </div>
+
+      </ng-container>
+
+      <!-- NO SELECTION -->
+      <ng-template #noSelection>
+        <div class="no-selection">
+          <div class="no-selection-icon">📌</div>
+          <p>Sélectionnez un template SLA pour voir les détails</p>
+        </div>
+      </ng-template>
+    </div>
+  </div>
+
+  <!-- MODAL: CRÉER/ÉDITER TEMPLATE -->
+  <div class="modal-overlay" *ngIf="isFormOpen" (click)="closeTemplateForm()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ templateForm.get('id')?.value ? 'Éditer' : 'Créer' }} Template SLA</h3>
+        <button class="btn-close" (click)="closeTemplateForm()">✕</button>
+      </div>
+
+      <form [formGroup]="templateForm" class="modal-form">
+        <div class="form-group">
+          <label>Type de Réclamation *</label>
+          <select formControlName="type" class="form-control">
+            <option value="">-- Sélectionner --</option>
+            <option *ngFor="let type of complaintTypes" [value]="type">{{ type }}</option>
+          </select>
+          <span class="error" *ngIf="templateForm.get('type')?.invalid && templateForm.get('type')?.touched">
+            Requis
+          </span>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Durée SLA (heures) *</label>
+            <input 
+              type="number" 
+              formControlName="slaHours" 
+              class="form-control"
+              min="1" max="720">
+            <span class="error" *ngIf="templateForm.get('slaHours')?.invalid && templateForm.get('slaHours')?.touched">
+              Entre 1 et 720
+            </span>
+          </div>
+
+          <div class="form-group">
+            <label>Priorité *</label>
+            <select formControlName="priority" class="form-control">
+              <option value="">-- Sélectionner --</option>
+              <option *ngFor="let priority of priorityLevels" [value]="priority">{{ priority }}</option>
+            </select>
+            <span class="error" *ngIf="templateForm.get('priority')?.invalid && templateForm.get('priority')?.touched">
+              Requis
+            </span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Description *</label>
+          <textarea 
+            formControlName="description" 
+            class="form-control"
+            rows="3"
+            placeholder="Décrivez ce template SLA..."></textarea>
+          <span class="error" *ngIf="templateForm.get('description')?.invalid && templateForm.get('description')?.touched">
+            Requis
+          </span>
+        </div>
+
+        <div class="form-group checkbox">
+          <input type="checkbox" formControlName="isActive" id="isActive">
+          <label for="isActive">Activer ce template</label>
+        </div>
+      </form>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeTemplateForm()">Annuler</button>
+        <button class="btn btn-primary" (click)="saveTemplate()" [disabled]="isLoading">
+          {{ isLoading ? 'Sauvegarde...' : 'Enregistrer' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: AJOUTER NIVEAU D'ESCALADE -->
+  <div class="modal-overlay" *ngIf="isEscalationFormOpen" (click)="closeEscalationForm()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Ajouter Niveau d'Escalade</h3>
+        <button class="btn-close" (click)="closeEscalationForm()">✕</button>
+      </div>
+
+      <form [formGroup]="escalationForm" class="modal-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Niveau (1-5) *</label>
+            <input 
+              type="number" 
+              formControlName="level" 
+              class="form-control"
+              min="1" max="5">
+            <span class="error" *ngIf="escalationForm.get('level')?.invalid && escalationForm.get('level')?.touched">
+              Entre 1 et 5
+            </span>
+          </div>
+
+          <div class="form-group">
+            <label>Nom du Niveau *</label>
+            <input 
+              type="text" 
+              formControlName="name" 
+              class="form-control"
+              placeholder="ex: Avertissement, Orange...">
+            <span class="error" *ngIf="escalationForm.get('name')?.invalid && escalationForm.get('name')?.touched">
+              Requis
+            </span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Seuil (minutes restantes) *</label>
+          <input 
+            type="number" 
+            formControlName="minutesThreshold" 
+            class="form-control"
+            min="0"
+            placeholder="ex: 60">
+          <span class="error" *ngIf="escalationForm.get('minutesThreshold')?.invalid && escalationForm.get('minutesThreshold')?.touched">
+            Requis
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label>Destinataire *</label>
+          <select formControlName="targetRole" class="form-control">
+            <option value="">-- Sélectionner --</option>
+            <option *ngFor="let role of targetRoles" [value]="role">{{ role }}</option>
+          </select>
+          <span class="error" *ngIf="escalationForm.get('targetRole')?.invalid && escalationForm.get('targetRole')?.touched">
+            Requis
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label>Canaux de Notification *</label>
+          <div class="checkbox-group">
+            <div *ngFor="let channel of channelOptions" class="checkbox-item">
+              <input 
+                type="checkbox" 
+                [id]="'channel-' + channel"
+                (change)="$event.target.checked ? escalationForm.get('channels').value.push(channel) : escalationForm.get('channels').value.splice(escalationForm.get('channels').value.indexOf(channel), 1)">
+              <label [for]="'channel-' + channel">{{ channel }}</label>
+            </div>
+          </div>
+          <span class="error" *ngIf="escalationForm.get('channels')?.invalid && escalationForm.get('channels')?.touched">
+            Au moins un canal requis
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label>Action Requise *</label>
+          <textarea 
+            formControlName="requiredAction" 
+            class="form-control"
+            rows="3"
+            placeholder="Décrivez l'action à effectuer..."></textarea>
+          <span class="error" *ngIf="escalationForm.get('requiredAction')?.invalid && escalationForm.get('requiredAction')?.touched">
+            Requis
+          </span>
+        </div>
+      </form>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeEscalationForm()">Annuler</button>
+        <button class="btn btn-primary" (click)="addEscalationLevel()" [disabled]="isLoading">
+          {{ isLoading ? 'Ajout...' : 'Ajouter Niveau' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
